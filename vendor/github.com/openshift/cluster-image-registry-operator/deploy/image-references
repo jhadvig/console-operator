@@ -1,0 +1,12 @@
+kind: ImageStream
+apiVersion: image.openshift.io/v1
+spec:
+  tags:
+  - name: cluster-image-registry-operator
+    from:
+      kind: DockerImage
+      name: docker.io/openshift/origin-cluster-image-registry-operator:latest
+  - name: docker-registry
+    from:
+      kind: DockerImage
+      name: docker.io/openshift/origin-docker-registry:latest
