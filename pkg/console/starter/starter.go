@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"time"
 
+	configv1 "github.com/openshift/api/config/v1"
 	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/operatorclient"
 	"github.com/openshift/library-go/pkg/controller/controllercmd"
+	"github.com/openshift/library-go/pkg/operator/status"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/client-go/tools/cache"
 
 	// "k8s.io/client-go/dynamic"
 	"k8s.io/client-go/informers"
@@ -25,7 +27,7 @@ import (
 	"github.com/openshift/console-operator/pkg/generated/informers/externalversions"
 
 	// operator
-	operatorv1 "github.com/openshift/api/operator/v1"
+
 	"github.com/openshift/console-operator/pkg/console/operator"
 )
 
@@ -113,6 +115,11 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	// TODO: Replace this with real event recorder (use ControllerContext).
 	recorder := ctx.EventRecorder
 
+	operatorClient := &operatorclient.OperatorClient{
+		consoleOperatorInformers,
+		consoleOperatorClient.ConsoleV1(),
+	}
+
 	consoleOperator := operator.NewConsoleOperator(
 		// informers
 		consoleOperatorInformers.Console().V1().Consoles(), // Console
@@ -127,6 +134,18 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 		routesClient.RouteV1(),
 		oauthClient.OauthV1(),
 		recorder,
+	)
+
+	clusterOperatorStatus := status.NewClusterOperatorStatusController(
+		"openshift-console-operator",
+		[]configv1.ObjectReference{
+			{Group: "consoles.operator.openshift.io", Resource: "consoleoperatorconfig", Name: globalConfigName},
+			{Resource: "namespaces", Name: api.OpenShiftConsoleOperatorNamespace},
+		},
+		configClient.ConfigV1(),
+		operatorClient,
+		status.NewVersionGetter(),
+		ctx.EventRecorder,
 	)
 
 	kubeInformersNamespaced.Start(ctx.Context.Done())
@@ -152,22 +171,4 @@ func RunOperator(ctx *controllercmd.ControllerContext) error {
 	<-ctx.Context.Done()
 
 	return fmt.Errorf("stopped")
-}
-
-// I'd prefer this in a /console/status/ package, but other operators keep it here.
-type operatorStatusProvider struct {
-	informers externalversions.SharedInformerFactory
-}
-
-func (p *operatorStatusProvider) Informer() cache.SharedIndexInformer {
-	return p.informers.Console().V1().Consoles().Informer()
-}
-
-func (p *operatorStatusProvider) CurrentStatus() (operatorv1.OperatorStatus, error) {
-	instance, err := p.informers.Console().V1().Consoles().Lister().Consoles(api.TargetNamespace).Get(api.ResourceName)
-	if err != nil {
-		return operatorv1.OperatorStatus{}, err
-	}
-
-	return instance.Status.OperatorStatus, nil
 }

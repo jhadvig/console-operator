@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/openshift/console-operator/pkg/api"
 
 	// 3rd party
@@ -26,6 +27,7 @@ import (
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	"github.com/openshift/console-operator/pkg/boilerplate/operator"
 	"github.com/openshift/library-go/pkg/operator/events"
+	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
 	// informers
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
@@ -140,6 +142,16 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 
 	operatorConfig := obj.(*consolev1.Console)
 	if err := c.handleSync(operatorConfig); err != nil {
+		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
+			Type:    operatorsv1.OperatorStatusTypeFailing,
+			Status:  operatorsv1.ConditionTrue,
+			Reason:  "OperatorSyncLoopError",
+			Message: err.Error(),
+		})
+		if _, updateErr := c.operatorClient.UpdateStatus(operatorConfig); updateErr != nil {
+			glog.Errorf("error updating status: %s", err)
+		}
+
 		return err
 	}
 	return nil
