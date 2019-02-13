@@ -144,12 +144,18 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 			Status: operatorv1.ConditionTrue,
 			Reason: "DesiredStateNotYetAchieved",
 		})
+	} else {
+		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
+			Type:   operatorv1.OperatorStatusTypeProgressing,
+			Status: operatorv1.ConditionFalse,
+		})
 	}
 
 	if !equality.Semantic.DeepEqual(operatorConfig.Status, originalOperatorConfig.Status) {
 		logrus.Println("!!!!!! ~~~~~~~~~ UPDATING STATUS ~~~~~~~~ !!!!!!!!!!")
 		if _, err := co.operatorConfigClient.UpdateStatus(operatorConfig); err != nil {
 			logrus.Println("!!!!!! ~~~~~~~~~ UPDATING STATUS FAILED ~~~~~~~~ !!!!!!!!!!")
+			logrus.Printf("!!!!!! ~~~~~~~~~ %s ~~~~~~~~ !!!!!!!!!!", err)
 			logrus.Infof("failed to update console operator status")
 		}
 	}
