@@ -158,9 +158,9 @@ We don't want the default `console-operator` to run if we are going to test our 
 the following:
 
 ```bash
-# Instruct CVO to stop managing the console operator
-# CVO's job is to ensure all of the operators are functioning correctly
-# if we want to make changes to the operator, we need to tell CVO to stop caring.
+# Instruct CVO to stop managing the console operator.
+# CVO's job is to ensure all of the operators are functioning correctly.
+# If we want to make changes to the operator, we need to tell CVO to stop caring.
 oc apply -f examples/cvo-unmanage-operator.yaml
 # Then, scale down the default console-operator 
 oc scale --replicas 0 deployment console-operator --namespace openshift-console-operator
@@ -226,6 +226,12 @@ And ensure that the `imagePullPolicy` is still `Always`.  This will ensure a fas
 imagePullPolicy: Always
 ```
 
+Apply the updated operator manifest:
+
+```bash
+oc apply -f ~/05-operator-alt-image.yaml
+```
+
 #### Deploying 
 
 At this point, your pattern will be 
@@ -268,6 +274,13 @@ oc describe pod console-operator-<sha> -n openshift-console-operator
 oc logs -f console-operator-<sha> -n openshift-console-operator
 # exec into the pod
  oc exec -it console-operator-<sha> -- /bin/bash
+```
+
+#### Restore default settings
+In order to restore the default `console-operator`, we need to start CVO to manage the operators.
+
+```bash
+oc apply -f examples/cvo-manage-operator.yaml
 ```
 
 ## Tips
