@@ -126,6 +126,8 @@ rules:
   - config.openshift.io
   resources:
   - consoles
+  - clusteroperators
+  - clusteroperators/status
   verbs:
   - get
   - list
