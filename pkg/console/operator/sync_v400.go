@@ -13,6 +13,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -41,6 +42,7 @@ import (
 // the loop.
 func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleConfig *configv1.Console) (*operatorv1.Console, *configv1.Console, bool, error) {
 	errors := []error{}
+	originalOperatorConfig := operatorConfig.DeepCopy()
 	logrus.Println("running sync loop 4.0.0")
 	recorder := co.recorder
 
@@ -137,8 +139,17 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 	// if any of our resources have changed, we should update the operatorConfig.Status. otherwise, skip this step.
 	if toUpdate {
 		logrus.Infof("sync_v400: to update spec: %v", toUpdate)
-		// TODO: set the status.
-		// setStatus(operatorConfig.Status, svc, rt, cm, dep, oa, sec)
+		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
+			Type:   operatorapiv1.OperatorStatusTypeProgressing,
+			Status: operatorapiv1.ConditionTrue,
+			Reason: "DesiredStateNotYetAchieved",
+		})
+	}
+
+	if !equality.Semantic.DeepEqual(operatorConfig.Status, originalOperatorConfig.Status) {
+		if _, err := co.operatorConfigClient.UpdateStatus(operatorConfig); err != nil {
+			logrus.Infof("failed to update console operator status")
+		}
 	}
 
 	defer func() {
