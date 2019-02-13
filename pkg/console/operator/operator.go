@@ -158,7 +158,7 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 		if _, updateErr := c.operatorConfigClient.UpdateStatus(operatorConfig); updateErr != nil {
 			glog.Errorf("error updating status: %s", err)
 		}
-
+		logrus.Println("!!!!!! ~~~~~~~~~ SYNC RETURNS ERR ~~~~~~~~~ !!!!!!!!!!")
 		return err
 	}
 
@@ -167,6 +167,7 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 		Status:             operatorsv1.ConditionTrue,
 		LastTransitionTime: metav1.Now(),
 	})
+	logrus.Println("!!!!!! ~~~~~~~~~ SYNC RETURNS NIL ~~~~~~~~~ !!!!!!!!!!")
 	return nil
 }
 

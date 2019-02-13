@@ -94,6 +94,7 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 		// return operatorConfig, consoleConfig, toUpdate, depErr
 	}
 
+	logrus.Printf("!!!!!! ~~~~~~~~~ NUBER OF REPLICAS %d ~~~~~~~~~ !!!!!!!!!!\n", actualDeployment.Status.ReadyReplicas)
 	// Need to figure out if we also want to check the deployment ReadyReplicas count?
 	if actualDeployment.Status.ReadyReplicas > 0 {
 		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
@@ -112,6 +113,7 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 	}
 
 	if len(errors) > 0 {
+		logrus.Println("!!!!!! ~~~~~~~~~ SYNC_400 HAS ERRORS ~~~~~~~~ !!!!!!!!!!")
 		message := ""
 		for _, err := range errors {
 			message = message + err.Error() + "\n"
@@ -123,6 +125,7 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 			Reason:  "SyncError",
 		})
 	} else {
+		logrus.Println("!!!!!! ~~~~~~~~~ SYNC_400 HAS NO ERRORS ~~~~~~~~ !!!!!!!!!!")
 		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
 			Type:   workloadFailingCondition,
 			Status: operatorv1.ConditionFalse,
