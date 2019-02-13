@@ -140,14 +140,16 @@ func sync_v400(co *consoleOperator, operatorConfig *operatorv1.Console, consoleC
 	if toUpdate {
 		logrus.Infof("sync_v400: to update spec: %v", toUpdate)
 		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorv1.OperatorCondition{
-			Type:   operatorapiv1.OperatorStatusTypeProgressing,
-			Status: operatorapiv1.ConditionTrue,
+			Type:   operatorv1.OperatorStatusTypeProgressing,
+			Status: operatorv1.ConditionTrue,
 			Reason: "DesiredStateNotYetAchieved",
 		})
 	}
 
 	if !equality.Semantic.DeepEqual(operatorConfig.Status, originalOperatorConfig.Status) {
+		logrus.Println("!!!!!! ~~~~~~~~~ UPDATING STATUS ~~~~~~~~ !!!!!!!!!!")
 		if _, err := co.operatorConfigClient.UpdateStatus(operatorConfig); err != nil {
+			logrus.Println("!!!!!! ~~~~~~~~~ UPDATING STATUS FAILED ~~~~~~~~ !!!!!!!!!!")
 			logrus.Infof("failed to update console operator status")
 		}
 	}

@@ -149,6 +149,7 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	}
 
 	if err := c.handleSync(operatorConfig, consoleConfig); err != nil {
+		logrus.Println("!!!!!! ~~~~~~~~~ UPDATING STATUS ~~~~~~~~ !!!!!!!!!!")
 		v1helpers.SetOperatorCondition(&operatorConfig.Status.Conditions, operatorsv1.OperatorCondition{
 			Type:               operatorsv1.OperatorStatusTypeFailing,
 			Status:             operatorsv1.ConditionTrue,
@@ -157,6 +158,7 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 			LastTransitionTime: metav1.Now(),
 		})
 		if _, updateErr := c.operatorConfigClient.UpdateStatus(operatorConfig); updateErr != nil {
+			logrus.Println("!!!!!! ~~~~~~~~~ UPDATING STATUS FAILED ~~~~~~~~ !!!!!!!!!!")
 			glog.Errorf("error updating status: %s", err)
 		}
 		logrus.Println("!!!!!! ~~~~~~~~~ SYNC RETURNS ERR ~~~~~~~~~ !!!!!!!!!!")
@@ -200,7 +202,9 @@ func (c *consoleOperator) handleSync(operatorConfig *operatorsv1.Console, consol
 			Message: "the controller manager is in an unmanaged state, therefore no operator actions are failing.",
 		})
 		if !equality.Semantic.DeepEqual(operatorConfig.Status, originalOperatorConfig.Status) {
+			logrus.Println("!!!!!! ~~~~~~~~~ UPDATING STATUS ~~~~~~~~ !!!!!!!!!!")
 			if _, err := c.operatorConfigClient.UpdateStatus(operatorConfig); err != nil {
+				logrus.Println("!!!!!! ~~~~~~~~~ UPDATING STATUS FAILED ~~~~~~~~ !!!!!!!!!!")
 				return err
 			}
 		}
