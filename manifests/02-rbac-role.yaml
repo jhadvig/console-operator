@@ -139,6 +139,7 @@ rules:
   - operator.openshift.io
   resources:
   - consoles
+  - consoles/status
   verbs:
   - get
   - list
