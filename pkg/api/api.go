@@ -22,4 +22,9 @@ const (
 	OpenShiftConfigManagedNamespace     = "openshift-config-managed"
 	OpenShiftConfigNamespace            = "openshift-config"
 	OpenShiftCustomLogoConfigMapName    = "custom-logo"
+	TrustedCAConfigMapName              = "trusted-ca-bundle"
+	TrustedCABundleKey                  = "ca-bundle.crt"
+	TrustedCABundleMountDir             = "/etc/pki/ca-trust/extracted/pem"
+	TrustedCABundleMountFile            = "tls-ca-bundle.pem"
+	TrustedCAFileDir                    = TrustedCABundleMountDir + "/" + TrustedCABundleMountFile
 )
