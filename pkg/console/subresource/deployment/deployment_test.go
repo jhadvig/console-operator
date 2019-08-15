@@ -26,6 +26,7 @@ func TestDefaultDeployment(t *testing.T) {
 		config             *operatorsv1.Console
 		cm                 *corev1.ConfigMap
 		ca                 *corev1.ConfigMap
+		tca                *corev1.ConfigMap
 		sec                *corev1.Secret
 		rt                 *v1.Route
 		proxy              *configv1.Proxy
@@ -85,7 +86,8 @@ func TestDefaultDeployment(t *testing.T) {
 					Data:       map[string]string{"console-config.yaml": ""},
 					BinaryData: nil,
 				},
-				ca: &corev1.ConfigMap{},
+				ca:  &corev1.ConfigMap{},
+				tca: &corev1.ConfigMap{},
 				sec: &corev1.Secret{
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
@@ -117,6 +119,7 @@ func TestDefaultDeployment(t *testing.T) {
 						configMapResourceVersionAnnotation:          "",
 						secretResourceVersionAnnotation:             "",
 						serviceCAConfigMapResourceVersionAnnotation: "",
+						trustedCAConfigMapResourceVersionAnnotation: "",
 						consoleImageAnnotation:                      "",
 					},
 					OwnerReferences: nil,
@@ -136,6 +139,7 @@ func TestDefaultDeployment(t *testing.T) {
 							configMapResourceVersionAnnotation:          "",
 							secretResourceVersionAnnotation:             "",
 							serviceCAConfigMapResourceVersionAnnotation: "",
+							trustedCAConfigMapResourceVersionAnnotation: "",
 							consoleImageAnnotation:                      "",
 						},
 					},
@@ -202,7 +206,7 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(DefaultDeployment(tt.args.config, tt.args.cm, tt.args.cm, tt.args.sec, tt.args.rt, tt.args.proxy, tt.args.canMountCustomLogo), tt.want); diff != nil {
+			if diff := deep.Equal(DefaultDeployment(tt.args.config, tt.args.cm, tt.args.cm, tt.args.tca, tt.args.sec, tt.args.rt, tt.args.proxy, tt.args.canMountCustomLogo), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})
@@ -318,6 +322,25 @@ func Test_consoleVolumes(t *testing.T) {
 						},
 					},
 				},
+				{
+					Name: api.TrustedCAConfigMapName,
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: api.TrustedCAConfigMapName,
+							},
+							Items: []corev1.KeyToPath{
+								{
+									Key:  api.TrustedCABundleKey,
+									Path: api.TrustedCABundleMountFile,
+									Mode: nil,
+								},
+							},
+							DefaultMode: nil,
+							Optional:    nil,
+						},
+					},
+				},
 			},
 		},
 	}
@@ -363,6 +386,11 @@ func Test_consoleVolumeMounts(t *testing.T) {
 					Name:      api.ServiceCAConfigMapName,
 					ReadOnly:  true,
 					MountPath: "/var/service-ca",
+				},
+				{
+					Name:      api.TrustedCAConfigMapName,
+					ReadOnly:  true,
+					MountPath: api.TrustedCABundleMountDir,
 				},
 			},
 		},

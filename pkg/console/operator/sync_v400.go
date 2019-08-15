@@ -62,7 +62,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 		return svcErr
 	}
 
-	cm, cmChanged, cmErr := co.SyncConfigMap(set.Operator, set.Console, set.Infrastructure, rt)
+	cm, cmChanged, cmErr := co.SyncConfigMap(set.Operator, set.Console, set.Infrastructure, set.Proxy, rt)
 	toUpdate = toUpdate || cmChanged
 	co.HandleProgressing(updatedOperatorConfig, "ConsoleConfigMapSync", cmErr)
 	if cmErr != nil {
@@ -76,6 +76,14 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	if serviceCAConfigMapErr != nil {
 		klog.V(4).Infof("incomplete sync: %v", fmt.Sprintf("%q: %v", "serviceCAconfigmap", serviceCAConfigMapErr))
 		return serviceCAConfigMapErr
+	}
+
+	trustedCAConfigMap, trustedCAConfigMapChanged, trustedCAConfigMapErr := co.SyncTrustedCAConfigMap(set.Operator)
+	toUpdate = toUpdate || trustedCAConfigMapChanged
+	co.HandleProgressing(updatedOperatorConfig, "TrustedCASync", trustedCAConfigMapErr)
+	if trustedCAConfigMapErr != nil {
+		klog.V(4).Infof("incomplete sync: %v", fmt.Sprintf("%q: %v", "trustedCAconfigmap", trustedCAConfigMapErr))
+		return trustedCAConfigMapErr
 	}
 
 	// TODO: why is this missing a toUpdate change?
@@ -103,7 +111,7 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 		return oauthErr
 	}
 
-	actualDeployment, depChanged, depErr := co.SyncDeployment(set.Operator, cm, serviceCAConfigMap, sec, rt, set.Proxy, customLogoCanMount)
+	actualDeployment, depChanged, depErr := co.SyncDeployment(set.Operator, cm, serviceCAConfigMap, trustedCAConfigMap, sec, rt, set.Proxy, customLogoCanMount)
 	toUpdate = toUpdate || depChanged
 	co.HandleProgressing(updatedOperatorConfig, "ConsoleDeploymentSync", depErr)
 	if depErr != nil {
@@ -132,29 +140,30 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 		return nil
 	}())
 
-	// the operand is available if all resources are:
-	// - present
-	// - if we have at least one ready replica
-	// - route is admitted
-	// available is currently defined as "met the users intent"
-	if !deploymentsub.IsReady(actualDeployment) {
-		msg := fmt.Sprintf("%v pods available for console deployment", actualDeployment.Status.ReadyReplicas)
-		klog.V(4).Infoln(msg)
-		co.ConditionDeploymentNotAvailable(updatedOperatorConfig, msg)
-	} else if !routesub.IsAdmitted(rt) {
-		klog.V(4).Infoln("console route is not admitted")
-		co.SetStatusCondition(
-			updatedOperatorConfig,
-			operatorv1.OperatorStatusTypeAvailable,
-			operatorv1.ConditionFalse,
-			"RouteNotAdmitted",
-			"console route is not admitted",
-		)
-	} else if actualDeployment.Status.Replicas == actualDeployment.Status.ReadyReplicas && actualDeployment.Status.Replicas == actualDeployment.Status.UpdatedReplicas {
-		co.ConditionDeploymentAvailable(updatedOperatorConfig, fmt.Sprintf("%v replicas ready at version %s", actualDeployment.Status.ReadyReplicas, os.Getenv("RELEASE_VERSION")))
-	} else {
-		co.ConditionDeploymentAvailable(updatedOperatorConfig, fmt.Sprintf("%v replicas ready", actualDeployment.Status.ReadyReplicas))
-	}
+	co.HandleAvailable(updatedOperatorConfig, "DeploymentIsReady", func() error {
+		if !deploymentsub.IsReady(actualDeployment) {
+			msg := fmt.Sprintf("%v pods available for console deployment", actualDeployment.Status.ReadyReplicas)
+			klog.V(4).Infoln(msg)
+			return errors.New(msg)
+		}
+		return nil
+	}())
+	co.HandleAvailable(updatedOperatorConfig, "DeploymentIsUpdated", func() error {
+		if !deploymentsub.IsReadyAndUpdated(actualDeployment) {
+			msg := fmt.Sprintf("%v replicas ready at version %s", actualDeployment.Status.ReadyReplicas, os.Getenv("RELEASE_VERSION"))
+			klog.V(4).Infoln(msg)
+			return errors.New(msg)
+		}
+		return nil
+	}())
+	co.HandleAvailable(updatedOperatorConfig, "RouteNotAdmitted", func() error {
+		if !routesub.IsAdmitted(rt) {
+			msg := "console route is not admitted"
+			klog.V(4).Infoln(msg)
+			return errors.New(msg)
+		}
+		return nil
+	}())
 
 	// if we survive the gauntlet, we need to update the console config with the
 	// public hostname so that the world can know the console is ready to roll
@@ -218,8 +227,8 @@ func (co *consoleOperator) SyncConsolePublicConfig(consoleURL string) (*corev1.C
 	return resourceapply.ApplyConfigMap(co.configMapClient, co.recorder, requiredConfigMap)
 }
 
-func (co *consoleOperator) SyncDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route, proxyConfig *configv1.Proxy, canMountCustomLogo bool) (*appsv1.Deployment, bool, error) {
-	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, sec, rt, proxyConfig, canMountCustomLogo)
+func (co *consoleOperator) SyncDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, rt *routev1.Route, proxyConfig *configv1.Proxy, canMountCustomLogo bool) (*appsv1.Deployment, bool, error) {
+	requiredDeployment := deploymentsub.DefaultDeployment(operatorConfig, cm, serviceCAConfigMap, trustedCAConfigMap, sec, rt, proxyConfig, canMountCustomLogo)
 	expectedGeneration := getDeploymentGeneration(co)
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
 
@@ -284,7 +293,7 @@ func (co *consoleOperator) SyncSecret(operatorConfig *operatorv1.Console) (*core
 // apply configmap (needs route)
 // by the time we get to the configmap, we can assume the route exits & is configured properly
 // therefore no additional error handling is needed here.
-func (co *consoleOperator) SyncConfigMap(operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
+func (co *consoleOperator) SyncConfigMap(operatorConfig *operatorv1.Console, consoleConfig *configv1.Console, infrastructureConfig *configv1.Infrastructure, proxyConfig *configv1.Proxy, rt *routev1.Route) (*corev1.ConfigMap, bool, error) {
 	managedConfig, mcErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(api.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
 	if mcErr != nil && !apierrors.IsNotFound(mcErr) {
 		klog.Errorf("managed config error: %v", mcErr)
@@ -338,6 +347,39 @@ func (co *consoleOperator) SyncServiceCAConfigMap(operatorConfig *operatorv1.Con
 		klog.V(4).Infoln("service-ca configmap updated")
 	} else {
 		klog.Errorf("%q: %v", "service-ca configmap", err)
+	}
+	return actual, true, err
+}
+
+func (co *consoleOperator) SyncTrustedCAConfigMap(operatorConfig *operatorv1.Console) (*corev1.ConfigMap, bool, error) {
+	required := configmapsub.DefaultTrustedCAConfigMap(operatorConfig)
+	existing, err := co.configMapClient.ConfigMaps(required.Namespace).Get(required.Name, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(required)
+		if err == nil {
+			klog.V(4).Infoln("trusted-ca-bundle configmap created")
+		} else {
+			klog.Errorf("%q: %v", "trusted-ca-bundle configmap", err)
+		}
+		return actual, true, err
+	}
+	if err != nil {
+		klog.Errorf("%q: %v", "trusted-ca-bundle configmap", err)
+		return nil, false, err
+	}
+
+	modified := resourcemerge.BoolPtr(false)
+	resourcemerge.EnsureObjectMeta(modified, &existing.ObjectMeta, required.ObjectMeta)
+	if !*modified {
+		klog.V(4).Infoln("trusted-ca-bundle configmap exists and is in the correct state")
+		return existing, false, nil
+	}
+
+	actual, err := co.configMapClient.ConfigMaps(required.Namespace).Update(existing)
+	if err == nil {
+		klog.V(4).Infoln("trusted-ca-bundle configmap updated")
+	} else {
+		klog.Errorf("%q: %v", "trusted-ca-bundle configmap", err)
 	}
 	return actual, true, err
 }
