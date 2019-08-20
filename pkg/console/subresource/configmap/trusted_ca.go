@@ -1,8 +1,6 @@
 package configmap
 
 import (
-	"fmt"
-
 	corev1 "k8s.io/api/core/v1"
 
 	operatorv1 "github.com/openshift/api/operator/v1"
@@ -33,6 +31,5 @@ func TrustedCAStub() *corev1.ConfigMap {
 			api.TrustedCABundleKey: "",
 		},
 	}
-	fmt.Printf("\n\n----> %#v \n\n", configMap)
 	return configMap
 }

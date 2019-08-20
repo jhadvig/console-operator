@@ -26,5 +26,5 @@ const (
 	TrustedCABundleKey                  = "ca-bundle.crt"
 	TrustedCABundleMountDir             = "/etc/pki/ca-trust/extracted/pem"
 	TrustedCABundleMountFile            = "tls-ca-bundle.pem"
-	TrustedCAFileDir                    = TrustedCABundleMountDir + TrustedCABundleMountFile
+	TrustedCAFileDir                    = TrustedCABundleMountDir + "/" + TrustedCABundleMountFile
 )
