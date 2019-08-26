@@ -13,6 +13,7 @@ import (
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	v1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/subresource/configmap"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
@@ -44,6 +45,102 @@ func TestDefaultDeployment(t *testing.T) {
 		Status: operatorsv1.ConsoleStatus{},
 	}
 
+	consoleDeploymentObjectMeta := metav1.ObjectMeta{
+		Name:                       api.OpenShiftConsoleName,
+		Namespace:                  api.OpenShiftConsoleNamespace,
+		GenerateName:               "",
+		SelfLink:                   "",
+		UID:                        "",
+		ResourceVersion:            "",
+		Generation:                 0,
+		CreationTimestamp:          metav1.Time{},
+		DeletionTimestamp:          nil,
+		DeletionGracePeriodSeconds: nil,
+		Labels:                     labels,
+		Annotations: map[string]string{
+			configMapResourceVersionAnnotation:          "",
+			secretResourceVersionAnnotation:             "",
+			serviceCAConfigMapResourceVersionAnnotation: "",
+			trustedCAConfigMapResourceVersionAnnotation: "",
+			consoleImageAnnotation:                      "",
+		},
+		OwnerReferences: nil,
+		Initializers:    nil,
+		Finalizers:      nil,
+		ClusterName:     "",
+	}
+
+	consoleConfig := &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:                       "console-config",
+			GenerateName:               "",
+			Namespace:                  api.OpenShiftConsoleNamespace,
+			SelfLink:                   "",
+			UID:                        "",
+			ResourceVersion:            "",
+			Generation:                 0,
+			CreationTimestamp:          metav1.Time{},
+			DeletionTimestamp:          nil,
+			DeletionGracePeriodSeconds: nil,
+			Labels:                     labels,
+			Annotations:                nil,
+			OwnerReferences:            nil,
+			Initializers:               nil,
+			Finalizers:                 nil,
+			ClusterName:                "",
+		},
+		Data:       map[string]string{"console-config.yaml": ""},
+		BinaryData: nil,
+	}
+
+	consoleDeploymentTolerations := []corev1.Toleration{
+		{
+			Key:      "node-role.kubernetes.io/master",
+			Operator: corev1.TolerationOpExists,
+			Effect:   corev1.TaintEffectNoSchedule,
+		},
+		{
+			Key:               "node.kubernetes.io/unreachable",
+			Operator:          corev1.TolerationOpExists,
+			Effect:            corev1.TaintEffectNoExecute,
+			TolerationSeconds: &tolerationSeconds,
+		},
+		{
+			Key:               "node.kubernetes.io/not-reachable",
+			Operator:          corev1.TolerationOpExists,
+			Effect:            corev1.TaintEffectNoExecute,
+			TolerationSeconds: &tolerationSeconds,
+		},
+	}
+
+	consoleDeploymentTemplateAnnotations := map[string]string{
+		configMapResourceVersionAnnotation:          "",
+		secretResourceVersionAnnotation:             "",
+		serviceCAConfigMapResourceVersionAnnotation: "",
+		trustedCAConfigMapResourceVersionAnnotation: "",
+		consoleImageAnnotation:                      "",
+	}
+
+	consoleDeploymentAffinity := &corev1.Affinity{
+		// spread out across master nodes rather than congregate on one
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+				Weight: 100,
+				PodAffinityTerm: corev1.PodAffinityTerm{
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: util.SharedLabels(),
+					},
+					TopologyKey: "kubernetes.io/hostname",
+				},
+			}},
+		},
+	}
+
+	trustedCAConfigMapEmpty := configmap.TrustedCAStub()
+	trustedCAConfigMapSet := configmap.TrustedCAStub()
+	trustedCAConfigMapSet.Data[api.TrustedCABundleKey] = "testCAValue"
+
 	proxyConfig := &configv1.Proxy{
 		TypeMeta:   metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{},
@@ -63,31 +160,9 @@ func TestDefaultDeployment(t *testing.T) {
 			name: "Test Default Config Map",
 			args: args{
 				config: consoleOperatorConfig,
-				cm: &corev1.ConfigMap{
-					TypeMeta: metav1.TypeMeta{},
-					ObjectMeta: metav1.ObjectMeta{
-						Name:                       "console-config",
-						GenerateName:               "",
-						Namespace:                  api.OpenShiftConsoleNamespace,
-						SelfLink:                   "",
-						UID:                        "",
-						ResourceVersion:            "",
-						Generation:                 0,
-						CreationTimestamp:          metav1.Time{},
-						DeletionTimestamp:          nil,
-						DeletionGracePeriodSeconds: nil,
-						Labels:                     labels,
-						Annotations:                nil,
-						OwnerReferences:            nil,
-						Initializers:               nil,
-						Finalizers:                 nil,
-						ClusterName:                "",
-					},
-					Data:       map[string]string{"console-config.yaml": ""},
-					BinaryData: nil,
-				},
-				ca:  &corev1.ConfigMap{},
-				tca: &corev1.ConfigMap{},
+				cm:     consoleConfig,
+				ca:     &corev1.ConfigMap{},
+				tca:    trustedCAConfigMapEmpty,
 				sec: &corev1.Secret{
 					TypeMeta:   metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{},
@@ -102,46 +177,17 @@ func TestDefaultDeployment(t *testing.T) {
 				proxy: proxyConfig,
 			},
 			want: &appsv1.Deployment{
-				TypeMeta: metav1.TypeMeta{},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:                       api.OpenShiftConsoleName,
-					Namespace:                  api.OpenShiftConsoleNamespace,
-					GenerateName:               "",
-					SelfLink:                   "",
-					UID:                        "",
-					ResourceVersion:            "",
-					Generation:                 0,
-					CreationTimestamp:          metav1.Time{},
-					DeletionTimestamp:          nil,
-					DeletionGracePeriodSeconds: nil,
-					Labels:                     labels,
-					Annotations: map[string]string{
-						configMapResourceVersionAnnotation:          "",
-						secretResourceVersionAnnotation:             "",
-						serviceCAConfigMapResourceVersionAnnotation: "",
-						trustedCAConfigMapResourceVersionAnnotation: "",
-						consoleImageAnnotation:                      "",
-					},
-					OwnerReferences: nil,
-					Initializers:    nil,
-					Finalizers:      nil,
-					ClusterName:     "",
-				},
+				TypeMeta:   metav1.TypeMeta{},
+				ObjectMeta: consoleDeploymentObjectMeta,
 				Spec: appsv1.DeploymentSpec{
 					Replicas: &replicaCount,
 					Selector: &metav1.LabelSelector{
 						MatchLabels: labels,
 					},
 					Template: corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{
-						Name:   api.OpenShiftConsoleName,
-						Labels: labels,
-						Annotations: map[string]string{
-							configMapResourceVersionAnnotation:          "",
-							secretResourceVersionAnnotation:             "",
-							serviceCAConfigMapResourceVersionAnnotation: "",
-							trustedCAConfigMapResourceVersionAnnotation: "",
-							consoleImageAnnotation:                      "",
-						},
+						Name:        api.OpenShiftConsoleName,
+						Labels:      labels,
+						Annotations: consoleDeploymentTemplateAnnotations,
 					},
 						Spec: corev1.PodSpec{
 							// we want to deploy on master nodes
@@ -149,40 +195,9 @@ func TestDefaultDeployment(t *testing.T) {
 								// empty string is correct
 								"node-role.kubernetes.io/master": "",
 							},
-							Affinity: &corev1.Affinity{
-								// spread out across master nodes rather than congregate on one
-								PodAntiAffinity: &corev1.PodAntiAffinity{
-									PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
-										Weight: 100,
-										PodAffinityTerm: corev1.PodAffinityTerm{
-											LabelSelector: &metav1.LabelSelector{
-												MatchLabels: util.SharedLabels(),
-											},
-											TopologyKey: "kubernetes.io/hostname",
-										},
-									}},
-								},
-							},
+							Affinity: consoleDeploymentAffinity,
 							// toleration is a taint override. we can and should be scheduled on a master node.
-							Tolerations: []corev1.Toleration{
-								{
-									Key:      "node-role.kubernetes.io/master",
-									Operator: corev1.TolerationOpExists,
-									Effect:   corev1.TaintEffectNoSchedule,
-								},
-								{
-									Key:               "node.kubernetes.io/unreachable",
-									Operator:          corev1.TolerationOpExists,
-									Effect:            corev1.TaintEffectNoExecute,
-									TolerationSeconds: &tolerationSeconds,
-								},
-								{
-									Key:               "node.kubernetes.io/not-reachable",
-									Operator:          corev1.TolerationOpExists,
-									Effect:            corev1.TaintEffectNoExecute,
-									TolerationSeconds: &tolerationSeconds,
-								},
-							},
+							Tolerations:                   consoleDeploymentTolerations,
 							PriorityClassName:             "system-cluster-critical",
 							RestartPolicy:                 corev1.RestartPolicyAlways,
 							SchedulerName:                 corev1.DefaultSchedulerName,
@@ -192,6 +207,68 @@ func TestDefaultDeployment(t *testing.T) {
 								consoleContainer(consoleOperatorConfig, defaultVolumeConfig(), proxyConfig),
 							},
 							Volumes: consoleVolumes(defaultVolumeConfig()),
+						},
+					},
+					Strategy:                appsv1.DeploymentStrategy{},
+					MinReadySeconds:         0,
+					RevisionHistoryLimit:    nil,
+					Paused:                  false,
+					ProgressDeadlineSeconds: nil,
+				},
+				Status: appsv1.DeploymentStatus{},
+			},
+		},
+		{
+			name: "Test Trusted CA Config Map",
+			args: args{
+				config: consoleOperatorConfig,
+				cm:     consoleConfig,
+				ca:     &corev1.ConfigMap{},
+				tca:    trustedCAConfigMapSet,
+				sec: &corev1.Secret{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Data:       nil,
+					StringData: nil,
+					Type:       "",
+				},
+				rt: &v1.Route{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+				},
+				proxy: proxyConfig,
+			},
+			want: &appsv1.Deployment{
+				TypeMeta:   metav1.TypeMeta{},
+				ObjectMeta: consoleDeploymentObjectMeta,
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &replicaCount,
+					Selector: &metav1.LabelSelector{
+						MatchLabels: labels,
+					},
+					Template: corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{
+						Name:        api.OpenShiftConsoleName,
+						Labels:      labels,
+						Annotations: consoleDeploymentTemplateAnnotations,
+					},
+						Spec: corev1.PodSpec{
+							// we want to deploy on master nodes
+							NodeSelector: map[string]string{
+								// empty string is correct
+								"node-role.kubernetes.io/master": "",
+							},
+							Affinity: consoleDeploymentAffinity,
+							// toleration is a taint override. we can and should be scheduled on a master node.
+							Tolerations:                   consoleDeploymentTolerations,
+							PriorityClassName:             "system-cluster-critical",
+							RestartPolicy:                 corev1.RestartPolicyAlways,
+							SchedulerName:                 corev1.DefaultSchedulerName,
+							TerminationGracePeriodSeconds: &gracePeriod,
+							SecurityContext:               &corev1.PodSecurityContext{},
+							Containers: []corev1.Container{
+								consoleContainer(consoleOperatorConfig, append(defaultVolumeConfig(), trustedCAVolume()), proxyConfig),
+							},
+							Volumes: consoleVolumes(append(defaultVolumeConfig(), trustedCAVolume())),
 						},
 					},
 					Strategy:                appsv1.DeploymentStrategy{},
@@ -322,25 +399,25 @@ func Test_consoleVolumes(t *testing.T) {
 						},
 					},
 				},
-				{
-					Name: api.TrustedCAConfigMapName,
-					VolumeSource: corev1.VolumeSource{
-						ConfigMap: &corev1.ConfigMapVolumeSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: api.TrustedCAConfigMapName,
-							},
-							Items: []corev1.KeyToPath{
-								{
-									Key:  api.TrustedCABundleKey,
-									Path: api.TrustedCABundleMountFile,
-									Mode: nil,
-								},
-							},
-							DefaultMode: nil,
-							Optional:    nil,
-						},
-					},
-				},
+				// {
+				// 	Name: api.TrustedCAConfigMapName,
+				// 	VolumeSource: corev1.VolumeSource{
+				// 		ConfigMap: &corev1.ConfigMapVolumeSource{
+				// 			LocalObjectReference: corev1.LocalObjectReference{
+				// 				Name: api.TrustedCAConfigMapName,
+				// 			},
+				// 			Items: []corev1.KeyToPath{
+				// 				{
+				// 					Key:  api.TrustedCABundleKey,
+				// 					Path: api.TrustedCABundleMountFile,
+				// 					Mode: nil,
+				// 				},
+				// 			},
+				// 			DefaultMode: nil,
+				// 			Optional:    nil,
+				// 		},
+				// 	},
+				// },
 			},
 		},
 	}
@@ -387,11 +464,11 @@ func Test_consoleVolumeMounts(t *testing.T) {
 					ReadOnly:  true,
 					MountPath: "/var/service-ca",
 				},
-				{
-					Name:      api.TrustedCAConfigMapName,
-					ReadOnly:  true,
-					MountPath: api.TrustedCABundleMountDir,
-				},
+				// {
+				// 	Name:      api.TrustedCAConfigMapName,
+				// 	ReadOnly:  true,
+				// 	MountPath: api.TrustedCABundleMountDir,
+				// },
 			},
 		},
 	}
