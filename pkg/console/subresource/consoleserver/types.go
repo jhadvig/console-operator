@@ -18,7 +18,6 @@ type Config struct {
 	Auth          `yaml:"auth"`
 	Customization `yaml:"customization"`
 	Providers     `yaml:"providers"`
-	Proxy         `yaml:"proxy"`
 }
 
 // ServingInfo holds configuration for serving HTTP.
@@ -63,9 +62,4 @@ type Customization struct {
 
 type Providers struct {
 	StatuspageID string `yaml:"statuspageID,omitempty"`
-}
-
-// Proxy holds proxy configuration
-type Proxy struct {
-	TrustedCAFile string `yaml:"trustedCAFile,omitempty"`
 }

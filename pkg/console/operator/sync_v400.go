@@ -356,11 +356,11 @@ func (co *consoleOperator) SyncTrustedCAConfigMap(operatorConfig *operatorv1.Con
 	existing, err := co.configMapClient.ConfigMaps(required.Namespace).Get(required.Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		actual, err := co.configMapClient.ConfigMaps(required.Namespace).Create(required)
-		if err == nil {
-			klog.V(4).Infoln("trusted-ca-bundle configmap created")
-		} else {
+		if err != nil {
 			klog.Errorf("%q: %v", "trusted-ca-bundle configmap", err)
+			return actual, true, err
 		}
+		klog.V(4).Infoln("trusted-ca-bundle configmap created")
 		return actual, true, err
 	}
 	if err != nil {
@@ -376,11 +376,11 @@ func (co *consoleOperator) SyncTrustedCAConfigMap(operatorConfig *operatorv1.Con
 	}
 
 	actual, err := co.configMapClient.ConfigMaps(required.Namespace).Update(existing)
-	if err == nil {
-		klog.V(4).Infoln("trusted-ca-bundle configmap updated")
-	} else {
+	if err != nil {
 		klog.Errorf("%q: %v", "trusted-ca-bundle configmap", err)
+		return actual, true, err
 	}
+	klog.V(4).Infoln("trusted-ca-bundle configmap updated")
 	return actual, true, err
 }
 

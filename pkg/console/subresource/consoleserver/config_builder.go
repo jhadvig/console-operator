@@ -36,7 +36,6 @@ type ConsoleServerCLIConfigBuilder struct {
 	statusPageID      string
 	customProductName string
 	customLogoFile    string
-	proxyCAFile       string
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -75,11 +74,6 @@ func (b *ConsoleServerCLIConfigBuilder) StatusPageID(id string) *ConsoleServerCL
 	return b
 }
 
-func (b *ConsoleServerCLIConfigBuilder) ProxyTrustedCAFile() *ConsoleServerCLIConfigBuilder {
-	b.proxyCAFile = api.TrustedCAFileDir
-	return b
-}
-
 func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 	return Config{
 		Kind:          "ConsoleConfig",
@@ -89,7 +83,6 @@ func (b *ConsoleServerCLIConfigBuilder) Config() Config {
 		Customization: b.customization(),
 		ServingInfo:   b.servingInfo(),
 		Providers:     b.providers(),
-		Proxy:         b.proxy(),
 	}
 }
 
@@ -162,10 +155,4 @@ func (b *ConsoleServerCLIConfigBuilder) providers() Providers {
 		}
 	}
 	return Providers{}
-}
-
-func (b *ConsoleServerCLIConfigBuilder) proxy() Proxy {
-	return Proxy{
-		TrustedCAFile: b.proxyCAFile,
-	}
 }

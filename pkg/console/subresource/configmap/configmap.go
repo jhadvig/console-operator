@@ -47,7 +47,6 @@ func DefaultConfigMap(
 		Brand(DEFAULT_BRAND).
 		DocURL(DEFAULT_DOC_URL).
 		APIServerURL(getApiUrl(infrastructureConfig)).
-		ProxyTrustedCAFile().
 		ConfigYAML()
 
 	extractedManagedConfig := extractYAML(managedConfig)
