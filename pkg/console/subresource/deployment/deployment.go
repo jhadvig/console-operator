@@ -80,6 +80,10 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 	gracePeriod := int64(30)
 	tolerationSeconds := int64(120)
 	volumeConfig := defaultVolumeConfig()
+	caBundle, exists := trustedCAConfigMap.Data["ca-bundle.crt"]
+	if exists && caBundle != "" {
+		volumeConfig = append(volumeConfig, trustedCAVolume())
+	}
 	if canMountCustomLogo {
 		volumeConfig = append(volumeConfig, customLogoVolume())
 	}
@@ -398,14 +402,17 @@ func defaultVolumeConfig() []volumeConfig {
 			path:        "/var/service-ca",
 			isConfigMap: true,
 		},
-		{
-			name:        api.TrustedCAConfigMapName,
-			readOnly:    true,
-			path:        api.TrustedCABundleMountDir,
-			isConfigMap: true,
-			mappedKeys: map[string]string{
-				api.TrustedCABundleKey: api.TrustedCABundleMountFile,
-			},
+	}
+}
+
+func trustedCAVolume() volumeConfig {
+	return volumeConfig{
+		name:        api.TrustedCAConfigMapName,
+		readOnly:    true,
+		path:        api.TrustedCABundleMountDir,
+		isConfigMap: true,
+		mappedKeys: map[string]string{
+			api.TrustedCABundleKey: api.TrustedCABundleMountFile,
 		},
 	}
 }
