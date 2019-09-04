@@ -433,15 +433,37 @@ func (c *consoleOperator) UpdateCustomLogoSyncSource(operatorConfig *operatorsv1
 	source := resourcesynccontroller.ResourceLocation{}
 	logoConfigMapName := operatorConfig.Spec.Customization.CustomLogoFile.Name
 
+	// _, err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(api.OpenShiftCustomLogoConfigMapName, metav1.GetOptions{})
+	// if err == nil {
+	// 	c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Delete(api.OpenShiftCustomLogoConfigMapName, &metav1.DeleteOptions{})
+	// }
+
+	// if apierrors.IsNotFound(err) {
+	// 	fmt.Printf("\n=== %s ===> notFound", api.OpenShiftCustomLogoConfigMapName)
+	// 	msg := fmt.Sprintf("destination custom logo file %v in openshift-console not found", logoConfigMapName)
+	// 	klog.V(4).Infof(msg)
+	// 	return false, "FailedGetDestination", customerrors.NewCustomLogoError(msg)
+	// }
+	// if err != nil {
+	// 	fmt.Printf("\n=== %s ===> %s", api.OpenShiftCustomLogoConfigMapName, err)
+	// 	return false, "DestinationError", customerrors.NewCustomLogoError(fmt.Sprintf("custom logo: %v\n", err))
+	// }
+
+	// fmt.Printf("\n=== %s ===> OK", api.OpenShiftCustomLogoConfigMapName)
+
 	if logoConfigMapName != "" {
 		source.Name = logoConfigMapName
 		source.Namespace = api.OpenShiftConfigNamespace
 	}
+
 	// if no custom logo provided, sync an empty source to delete
-	return c.resourceSyncer.SyncConfigMap(
+	fmt.Println("=-=-=> SyncConfigMap")
+	err := c.resourceSyncer.SyncConfigMap(
 		resourcesynccontroller.ResourceLocation{Namespace: api.OpenShiftConsoleNamespace, Name: api.OpenShiftCustomLogoConfigMapName},
 		source,
 	)
+	fmt.Printf("=-=-=> SyncConfigMap - %v", err)
+	return err
 }
 
 func (c *consoleOperator) ValidateCustomLogo(operatorConfig *operatorsv1.Console) (okToMount bool, reason string, err error) {
@@ -459,27 +481,32 @@ func (c *consoleOperator) ValidateCustomLogo(operatorConfig *operatorsv1.Console
 	}
 
 	// original user-defined logo in openshift-config
-	_, err = c.configMapClient.ConfigMaps(api.OpenShiftConfigNamespace).Get(logoConfigMapName, metav1.GetOptions{})
+	logoConfigMap, err := c.configMapClient.ConfigMaps(api.OpenShiftConfigNamespace).Get(logoConfigMapName, metav1.GetOptions{})
 	// If we 404, the logo file may not have been created yet.
 	if apierrors.IsNotFound(err) {
+		fmt.Printf("\n=== %s ===> notFound", logoConfigMapName)
 		msg := fmt.Sprintf("source custom logo file %v in openshift-config not found", logoConfigMapName)
 		klog.V(4).Infof(msg)
 		return false, "FailedGetSource", customerrors.NewCustomLogoError(msg)
 	}
 	if err != nil {
+		fmt.Printf("\n=== %s ===> %s", logoConfigMapName, err)
 		return false, "SourceError", customerrors.NewCustomLogoError(fmt.Sprintf("custom logo: %v\n", err))
 	}
-
+	fmt.Printf("\n=== %s ===> OK", logoConfigMap.ObjectMeta.Name)
 	// sync'd logo configmap into openshift-console namespace
-	logoConfigMap, err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(api.OpenShiftCustomLogoConfigMapName, metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
-		msg := fmt.Sprintf("destination custom logo file %v in openshift-console not found", logoConfigMapName)
-		klog.V(4).Infof(msg)
-		return false, "FailedGetDestination", customerrors.NewCustomLogoError(msg)
-	}
-	if err != nil {
-		return false, "DestinationError", customerrors.NewCustomLogoError(fmt.Sprintf("custom logo: %v\n", err))
-	}
+	// logoConfigMap, err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(api.OpenShiftCustomLogoConfigMapName, metav1.GetOptions{})
+	// if apierrors.IsNotFound(err) {
+	// 	fmt.Printf("\n=== %s ===> notFound", api.OpenShiftCustomLogoConfigMapName)
+	// 	msg := fmt.Sprintf("destination custom logo file %v in openshift-console not found", logoConfigMapName)
+	// 	klog.V(4).Infof(msg)
+	// 	return false, "FailedGetDestination", customerrors.NewCustomLogoError(msg)
+	// }
+	// if err != nil {
+	// 	fmt.Printf("\n=== %s ===> %s", api.OpenShiftCustomLogoConfigMapName, err)
+	// 	return false, "DestinationError", customerrors.NewCustomLogoError(fmt.Sprintf("custom logo: %v\n", err))
+	// }
+	// fmt.Printf("\n=== %s ===> OK", api.OpenShiftCustomLogoConfigMapName)
 
 	imageBytes := logoConfigMap.BinaryData[logoImageKey]
 	if configmapsub.LogoImageIsEmpty(imageBytes) {
