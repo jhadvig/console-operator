@@ -18,18 +18,8 @@ import (
 // this should by default nullify out any customizations a user sets
 func Pristine(t *testing.T, client *ClientSet) (*operatorsv1.Console, error) {
 	t.Helper()
-	operatorConfig, err := client.Operator.Consoles().Get(consoleapi.ConfigResourceName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-	copy := operatorConfig.DeepCopy()
-	cleanSpec := operatorsv1.ConsoleSpec{}
-	// we can set a default management state & log level, but
-	// nothing else should be necessary
-	cleanSpec.ManagementState = operatorsv1.Managed
-	cleanSpec.LogLevel = operatorsv1.Normal
-	copy.Spec = cleanSpec
-	return client.Operator.Consoles().Update(copy)
+	return client.Operator.Consoles().Patch(consoleapi.ConfigResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Managed", "logLevel":"Normal", "customization": null, "providers": null}}`))
+	// return client.Operator.Consoles().Patch(consoleapi.ConfigResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Managed", "logLevel":"Normal"}}`))
 }
 
 func MustPristine(t *testing.T, client *ClientSet) *operatorsv1.Console {

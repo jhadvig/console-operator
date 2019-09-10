@@ -1,8 +1,7 @@
 package e2e
 
 import (
-	"encoding/json"
-	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -12,8 +11,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/util/retry"
 
 	configv1 "github.com/openshift/api/config/v1"
 	operatorsv1 "github.com/openshift/api/operator/v1"
@@ -62,7 +61,7 @@ func cleanupCustomBrandTest(t *testing.T, client *framework.ClientSet, cmName st
 // console-config in openshift-config-managed, if the managed configmap exists.
 func TestCustomBrand(t *testing.T) {
 
-	t.Skip("Custom Brand Test is flaky, needs a refactor to make it more reliable.")
+	// t.Skip("Custom Brand Test is flaky, needs a refactor to make it more reliable.")
 
 	// create a configmap with the new logo
 	customProductName := "custom name"
@@ -76,13 +75,12 @@ func TestCustomBrand(t *testing.T) {
 	// cleanup, defer deletion of the configmap to ensure it happens even if another part of the test fails
 	defer cleanupCustomBrandTest(t, client, customLogoConfigMapName)
 
+	originalOperatorConfigSpec := operatorConfig.Spec.DeepCopy()
+	fmt.Printf("\n===>>> %#v\n", originalOperatorConfigSpec)
+
 	// update the operator config with custom branding
-	operatorConfigWithCustomLogo := withCustomBrand(*operatorConfig, customProductName, customLogoConfigMapName, customLogoFileName)
-	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		updatedConfig, err := client.Operator.Consoles().Update(operatorConfigWithCustomLogo)
-		operatorConfigWithCustomLogo = updatedConfig // shadowing
-		return err
-	})
+	specWithCustomization := []byte(`{"spec":{"customization":{"customLogoFile":{"name":"custom-logo","key":"pic.png"},"customProductName":"custom name"},"managementState":"Managed"}}`)
+	_, err := client.Operator.Consoles().Patch(consoleapi.ConfigResourceName, types.MergePatchType, specWithCustomization)
 	if err != nil {
 		t.Fatalf("could not update operator config with custom product name %v and logo %v via configmap %v (%v)", customProductName, customLogoFileName, customLogoConfigMapName, err)
 	}
@@ -125,27 +123,8 @@ func TestCustomBrand(t *testing.T) {
 		t.Fatalf("error: customization values not on deployment, %v", err)
 	}
 
-	// remove the custom logo from the operator config so we can verify that the configmap is cleaned up
-	operatorConfigWithoutCustomLogo := operatorConfigWithCustomLogo.DeepCopy()
-
-	// TODO: errors here
-	operatorConfigWithoutCustomLogo.Spec.Customization = operatorsv1.ConsoleCustomization{
-		// CustomLogoFile: nil,
-	}
-
-	// TODO: delete this extra logging
-	toLog, _ := json.Marshal(operatorConfigWithoutCustomLogo)
-	t.Logf("before: %v", string(toLog))
-
-	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		operatorConfigWithoutCustomLogo, err = client.Operator.Consoles().Update(operatorConfigWithoutCustomLogo)
-		return err
-	})
+	_, err = client.Operator.Consoles().Patch(consoleapi.ConfigResourceName, types.MergePatchType, []byte(`{"spec": {"managementState": "Managed", "logLevel":"Normal", "customization": null}}`))
 	if err != nil {
-		// TODO: delete this extra logging
-		toLog, _ := json.Marshal(operatorConfigWithoutCustomLogo)
-		t.Logf("after: %v", string(toLog))
-
 		t.Fatalf("could not clear customizations from operator config: %v", err)
 	}
 
@@ -158,7 +137,8 @@ func TestCustomBrand(t *testing.T) {
 		if err != nil {
 			return false, err
 		}
-		return true, errors.New("configmap custom-logo was not removed")
+		// Try until timeout
+		return false, nil
 	})
 	if err != nil {
 		t.Fatalf("configmap custom-logo not found in openshift-console")
