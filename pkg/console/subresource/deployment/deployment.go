@@ -82,6 +82,7 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 	if caBundleExists && caBundle != "" {
 		volumeConfig = append(volumeConfig, trustedCAVolume())
 	}
+	fmt.Printf("\n---> canMountCustomLogo - %v\n", canMountCustomLogo)
 	if canMountCustomLogo {
 		volumeConfig = append(volumeConfig, customLogoVolume())
 	}

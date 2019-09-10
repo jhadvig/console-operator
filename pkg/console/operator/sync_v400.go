@@ -224,6 +224,7 @@ func (co *consoleOperator) SyncDeployment(
 	genChanged := operatorConfig.ObjectMeta.Generation != operatorConfig.Status.ObservedGeneration
 
 	if genChanged {
+		fmt.Println("\n--->ndeployment generation changed")
 		klog.V(4).Infof("deployment generation changed from %d to %d", operatorConfig.ObjectMeta.Generation, operatorConfig.Status.ObservedGeneration)
 	}
 	deploymentsub.LogDeploymentAnnotationChanges(co.deploymentClient, requiredDeployment)
@@ -474,7 +475,8 @@ func (c *consoleOperator) ValidateCustomLogo(operatorConfig *operatorsv1.Console
 	if apierrors.IsNotFound(err) {
 		msg := fmt.Sprintf("destination custom logo file %v in openshift-console not found", api.OpenShiftCustomLogoConfigMapName)
 		klog.V(4).Infof(msg)
-		return true, false, "DestinationConfigMapNotFound", customerrors.NewCustomLogoError(msg)
+		fmt.Println("\n----- NeedSync")
+		return true, false, "", nil
 	}
 	if err != nil {
 		return false, false, "DestinationError", customerrors.NewCustomLogoError(fmt.Sprintf("destination custom logo error: %v\n", err))
@@ -487,10 +489,12 @@ func (c *consoleOperator) ValidateCustomLogo(operatorConfig *operatorsv1.Console
 	if !imageDataFound {
 		msg := "custom logo file exists but no image provided"
 		klog.V(4).Infoln(msg)
+		fmt.Println("\n----- NoImageProvided")
 		return false, false, "NoImageProvided", customerrors.NewCustomLogoError(msg)
 	}
 
 	klog.V(4).Infoln("custom logo ok to mount")
+	fmt.Println("\n----- OK TO MOUNT")
 	return true, true, "", nil
 }
 
