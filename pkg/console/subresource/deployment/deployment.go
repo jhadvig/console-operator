@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	// kube
+	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -17,14 +18,12 @@ import (
 	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/subresource/consoleserver"
+	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
 const (
-	containerPortName      = "https"
-	containerPort          = 8443
-	publicURLName          = "BRIDGE_DEVELOPER_CONSOLE_URL"
-	ConsoleServingCertName = "console-serving-cert"
 	ConsoleOauthConfigName = "console-oauth-config"
 	ConsoleReplicas        = 2
 )
@@ -158,6 +157,17 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 			},
 		},
 	}
+	if routesub.IsCustomRouteSet(operatorConfig) {
+		consoleConfig := consoleserver.Config{}
+		consoleConfigYAML := cm.Data["console-config.yaml"]
+		err := yaml.Unmarshal([]byte(consoleConfigYAML), &consoleConfig)
+		if err != nil {
+			klog.V(4).Infoln("unable to get redirect URL from console config")
+		}
+		if baseAddress := consoleConfig.ClusterInfo.ConsoleBaseAddress; baseAddress != "" {
+			deployment.Spec.Template.Spec.Containers = append(deployment.Spec.Template.Spec.Containers, redirectContainer(consoleConfig.ConsoleBaseAddress))
+		}
+	}
 	util.AddOwnerRef(deployment, util.OwnerRefFrom(operatorConfig))
 	return deployment
 }
@@ -285,16 +295,11 @@ func consoleContainer(cr *operatorv1.Console, volConfigList []volumeConfig, prox
 		ImagePullPolicy: corev1.PullPolicy("IfNotPresent"),
 		Name:            api.OpenShiftConsoleName,
 		Command:         flags,
-		// TODO: can probably remove, this is used for local dev
-		//Env: []corev1.EnvVar{{
-		//	Name:  publicURLName,
-		//	Value: consoleURL(),
-		//}},
-		Env: setEnvironmentVariables(proxyConfig),
+		Env:             setEnvironmentVariables(proxyConfig),
 		Ports: []corev1.ContainerPort{{
-			Name:          containerPortName,
+			Name:          api.ConsoleContainerPortName,
 			Protocol:      corev1.ProtocolTCP,
-			ContainerPort: containerPort,
+			ContainerPort: api.ConsoleContainerTargetPort,
 		}},
 		// Delay shutdown for 25 seconds, which is the estimated time for:
 		// * endpoint propagation on delete to the router: 5s
@@ -310,6 +315,35 @@ func consoleContainer(cr *operatorv1.Console, volConfigList []volumeConfig, prox
 		VolumeMounts:             volumeMounts,
 		ReadinessProbe:           defaultProbe(),
 		LivenessProbe:            livenessProbe(),
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+		Resources: corev1.ResourceRequirements{
+			Requests: map[corev1.ResourceName]resource.Quantity{
+				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceMemory: resource.MustParse("100Mi"),
+			},
+		},
+	}
+}
+
+func redirectContainer(redirectURL string) corev1.Container {
+	redirectFlag := fmt.Sprintf("--redirect-url=%s", redirectURL)
+
+	command := []string{
+		"console",
+		"redirect",
+		redirectFlag,
+	}
+
+	return corev1.Container{
+		Image:           util.GetOperatorImageEnv(),
+		ImagePullPolicy: corev1.PullPolicy("IfNotPresent"),
+		Name:            "redirect",
+		Command:         command,
+		Ports: []corev1.ContainerPort{{
+			Name:          api.RedirectContainerPortName,
+			Protocol:      corev1.ProtocolTCP,
+			ContainerPort: api.RedirectContainerPort,
+		}},
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		Resources: corev1.ResourceRequirements{
 			Requests: map[corev1.ResourceName]resource.Quantity{
@@ -351,7 +385,7 @@ func defaultProbe() *corev1.Probe {
 		Handler: corev1.Handler{
 			HTTPGet: &corev1.HTTPGetAction{
 				Path:   "/health",
-				Port:   intstr.FromInt(8443),
+				Port:   intstr.FromInt(api.ConsoleContainerTargetPort),
 				Scheme: corev1.URIScheme("HTTPS"),
 			},
 		},
@@ -410,7 +444,7 @@ func IsAvailableAndUpdated(deployment *appsv1.Deployment) bool {
 func defaultVolumeConfig() []volumeConfig {
 	return []volumeConfig{
 		{
-			name:     ConsoleServingCertName,
+			name:     api.ConsoleServingCertName,
 			readOnly: true,
 			path:     "/var/serving-cert",
 			isSecret: true,

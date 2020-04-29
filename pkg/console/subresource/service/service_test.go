@@ -1,8 +1,9 @@
 package service
 
 import (
-	"github.com/go-test/deep"
 	"testing"
+
+	"github.com/go-test/deep"
 
 	corev1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,15 +34,15 @@ func TestDefaultService(t *testing.T) {
 					Namespace: api.OpenShiftConsoleNamespace,
 					Labels:    map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{
-						ServingCertSecretAnnotation: ConsoleServingCertName},
+						ServingCertSecretAnnotation: api.ConsoleServingCertName},
 				},
 				Spec: corev1.ServiceSpec{
 					Ports: []corev1.ServicePort{
 						{
-							Name:       consolePortName,
+							Name:       api.ConsoleContainerPortName,
 							Protocol:   corev1.ProtocolTCP,
-							Port:       consolePort,
-							TargetPort: intstr.FromInt(consoleTargetPort),
+							Port:       api.ConsoleContainerPort,
+							TargetPort: intstr.FromInt(api.ConsoleContainerTargetPort),
 						},
 					},
 					Selector:        map[string]string{"app": api.OpenShiftConsoleName, "component": "ui"},
@@ -75,7 +76,7 @@ func TestStub(t *testing.T) {
 					Namespace: api.OpenShiftConsoleNamespace,
 					Labels:    map[string]string{"app": api.OpenShiftConsoleName},
 					Annotations: map[string]string{
-						ServingCertSecretAnnotation: ConsoleServingCertName},
+						ServingCertSecretAnnotation: api.ConsoleServingCertName},
 				},
 				Spec:   corev1.ServiceSpec{},
 				Status: corev1.ServiceStatus{},

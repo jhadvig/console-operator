@@ -114,7 +114,7 @@ func (c *ServiceSyncController) sync() error {
 	}
 
 	updatedOperatorConfig := operatorConfig.DeepCopy()
-	_, _, svcErr := resourceapply.ApplyService(c.serviceClient, c.recorder, service.DefaultService(nil))
+	_, _, svcErr := resourceapply.ApplyService(c.serviceClient, c.recorder, service.DefaultService(updatedOperatorConfig))
 	status.HandleProgressingOrDegraded(updatedOperatorConfig, "ServiceSync", "FailedApply", svcErr)
 	status.SyncStatus(c.ctx, c.operatorConfigClient, updatedOperatorConfig)
 

@@ -32,4 +32,12 @@ const (
 	TrustedCABundleMountFile            = "tls-ca-bundle.pem"
 	OCCLIDownloadsCustomResourceName    = "oc-cli-downloads"
 	ODOCLIDownloadsCustomResourceName   = "odo-cli-downloads"
+
+	ConsoleContainerPortName    = "https"
+	ConsoleContainerPort        = 443
+	ConsoleContainerTargetPort  = 8443
+	RedirectContainerPortName   = "redirect"
+	RedirectContainerPort       = 8080
+	RedirectContainerTargetPort = 8080
+	ConsoleServingCertName      = "console-serving-cert"
 )

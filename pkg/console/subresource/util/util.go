@@ -93,6 +93,10 @@ func GetImageEnv() string {
 	return os.Getenv("IMAGE")
 }
 
+func GetOperatorImageEnv() string {
+	return os.Getenv("OPERATOR_IMAGE")
+}
+
 // TODO: technically, this should take targetPort from route.spec.port.targetPort
 func HTTPS(host string) string {
 	protocol := "https://"

@@ -18,6 +18,7 @@ import (
 
 	// us
 	"github.com/openshift/console-operator/pkg/cmd/operator"
+	"github.com/openshift/console-operator/pkg/cmd/redirect"
 	"github.com/openshift/console-operator/pkg/cmd/version"
 )
 
@@ -56,6 +57,7 @@ func NewOperatorCommand() *cobra.Command {
 	}
 
 	cmd.AddCommand(operator.NewOperator())
+	cmd.AddCommand(redirect.NewConsoleRedirect())
 	cmd.AddCommand(version.NewVersion())
 
 	return cmd
