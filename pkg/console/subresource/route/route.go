@@ -76,16 +76,22 @@ func GetOrCreate(ctx context.Context, client routeclient.RoutesGetter, required 
 	return route, isNew, nil
 }
 
+// Default `console` route poinst by default to the `console` service.
+// If custom hostname for the console is set, then the default route
+// should point to the redirect `console-redirect` service and the
+// created custom route should be pointing to the `console` service.
 func DefaultRoute(cr *operatorv1.Console) *routev1.Route {
 	route := DefaultStub()
 	usePort := api.ConsoleContainerPortName
 	tlsTermination := routev1.TLSTerminationReencrypt
+	serviceName := api.OpenShiftConsoleServiceName
 	if IsCustomRouteSet(cr) {
 		usePort = api.RedirectContainerPortName
 		tlsTermination = routev1.TLSTerminationEdge
+		serviceName = api.OpenshiftConsoleRedirectServiceName
 	}
 	route.Spec = routev1.RouteSpec{
-		To:             toService(),
+		To:             toService(serviceName),
 		Port:           port(usePort),
 		TLS:            tls(nil, tlsTermination),
 		WildcardPolicy: wildcard(),
@@ -106,7 +112,7 @@ func CustomRoute(cr *operatorv1.Console, tlsConfig *CustomTLSCert) *routev1.Rout
 	route.ObjectMeta.Name = api.OpenshiftConsoleCustomRouteName
 	route.Spec = routev1.RouteSpec{
 		Host:           cr.Spec.Route.Hostname,
-		To:             toService(),
+		To:             toService(api.OpenShiftConsoleServiceName),
 		Port:           port(api.ConsoleContainerPortName),
 		TLS:            tls(tlsConfig, routev1.TLSTerminationReencrypt),
 		WildcardPolicy: wildcard(),
@@ -115,16 +121,11 @@ func CustomRoute(cr *operatorv1.Console, tlsConfig *CustomTLSCert) *routev1.Rout
 	return route
 }
 
-func routeMeta() metav1.ObjectMeta {
-	meta := util.SharedMeta()
-	return meta
-}
-
-func toService() routev1.RouteTargetReference {
+func toService(serviceName string) routev1.RouteTargetReference {
 	weight := int32(100)
 	return routev1.RouteTargetReference{
 		Kind:   "Service",
-		Name:   routeMeta().Name,
+		Name:   serviceName,
 		Weight: &weight,
 	}
 }

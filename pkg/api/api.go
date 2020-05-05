@@ -15,6 +15,7 @@ const (
 	OpenShiftConsoleConfigMapName       = "console-config"
 	OpenShiftConsolePublicConfigMapName = "console-public"
 	OpenshiftConsoleCustomRouteName     = "console-custom"
+	OpenshiftConsoleRedirectServiceName = "console-redirect"
 	ServiceCAConfigMapName              = "service-ca"
 	DefaultIngressCertConfigMapName     = "default-ingress-cert"
 	OpenShiftConsoleDeploymentName      = OpenShiftConsoleName
@@ -38,6 +39,6 @@ const (
 	ConsoleContainerTargetPort  = 8443
 	RedirectContainerPortName   = "redirect"
 	RedirectContainerPort       = 8080
-	RedirectContainerTargetPort = 8080
+	RedirectContainerTargetPort = RedirectContainerPort
 	ConsoleServingCertName      = "console-serving-cert"
 )

@@ -31,16 +31,17 @@ const (
 // set only some values:
 //   b.Host().Brand("").Config()
 type ConsoleServerCLIConfigBuilder struct {
-	host              string
-	logoutRedirectURL string
-	brand             operatorv1.Brand
-	docURL            string
-	apiServerURL      string
-	statusPageID      string
-	customProductName string
-	customLogoFile    string
-	CAFile            string
-	monitoring        map[string]string
+	host                   string
+	logoutRedirectURL      string
+	brand                  operatorv1.Brand
+	docURL                 string
+	apiServerURL           string
+	statusPageID           string
+	customProductName      string
+	customLogoFile         string
+	CAFile                 string
+	monitoring             map[string]string
+	customHostnameRedirect bool
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Host(host string) *ConsoleServerCLIConfigBuilder {
@@ -73,7 +74,12 @@ func (b *ConsoleServerCLIConfigBuilder) CustomLogoFile(customLogoFile string) *C
 	}
 	return b
 }
-
+func (b *ConsoleServerCLIConfigBuilder) CustomHostnameRedirect(redirect bool) *ConsoleServerCLIConfigBuilder {
+	if redirect {
+		b.customHostnameRedirect = redirect
+	}
+	return b
+}
 func (b *ConsoleServerCLIConfigBuilder) StatusPageID(id string) *ConsoleServerCLIConfigBuilder {
 	b.statusPageID = id
 	return b
@@ -119,11 +125,17 @@ func (b *ConsoleServerCLIConfigBuilder) ConfigYAML() (consoleConfigYAML []byte, 
 }
 
 func (b *ConsoleServerCLIConfigBuilder) servingInfo() ServingInfo {
-	return ServingInfo{
+	conf := ServingInfo{
 		BindAddress: "https://[::]:8443",
 		CertFile:    certFilePath,
 		KeyFile:     keyFilePath,
 	}
+
+	if b.customHostnameRedirect {
+		conf.CustomHostnameRedirect = b.customHostnameRedirect
+	}
+
+	return conf
 }
 
 func (b *ConsoleServerCLIConfigBuilder) clusterInfo() ClusterInfo {

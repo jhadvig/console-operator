@@ -6,7 +6,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/openshift/console-operator/pkg/api"
-	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
@@ -21,31 +20,42 @@ func DefaultService(cr *operatorv1.Console) *corev1.Service {
 	meta.Annotations = map[string]string{
 		ServingCertSecretAnnotation: api.ConsoleServingCertName,
 	}
-	ports := []corev1.ServicePort{
-		{
-			Name:       api.ConsoleContainerPortName,
-			Protocol:   corev1.ProtocolTCP,
-			Port:       api.ConsoleContainerPort,
-			TargetPort: intstr.FromInt(api.ConsoleContainerTargetPort),
-		},
-	}
-	if routesub.IsCustomRouteSet(cr) {
-		ports = append(ports, corev1.ServicePort{
-			Name:       api.RedirectContainerPortName,
-			Protocol:   corev1.ProtocolTCP,
-			Port:       api.RedirectContainerPort,
-			TargetPort: intstr.FromInt(api.RedirectContainerTargetPort),
-		})
-	}
-
 	service := Stub()
 	service.Spec = corev1.ServiceSpec{
-		Ports:           ports,
+		Ports: []corev1.ServicePort{
+			{
+				Name:       api.ConsoleContainerPortName,
+				Protocol:   corev1.ProtocolTCP,
+				Port:       api.ConsoleContainerPort,
+				TargetPort: intstr.FromInt(api.ConsoleContainerTargetPort),
+			},
+		},
 		Selector:        labels,
 		Type:            "ClusterIP",
 		SessionAffinity: "None",
 	}
 
+	util.AddOwnerRef(service, util.OwnerRefFrom(cr))
+	return service
+}
+
+func RedirectService(cr *operatorv1.Console) *corev1.Service {
+	labels := util.LabelsForConsole()
+	service := Stub()
+	service.ObjectMeta.Name = api.OpenshiftConsoleRedirectServiceName
+	service.Spec = corev1.ServiceSpec{
+		Ports: []corev1.ServicePort{
+			{
+				Name:       api.RedirectContainerPortName,
+				Protocol:   corev1.ProtocolTCP,
+				Port:       api.RedirectContainerPort,
+				TargetPort: intstr.FromInt(api.RedirectContainerTargetPort),
+			},
+		},
+		Selector:        labels,
+		Type:            "ClusterIP",
+		SessionAffinity: "None",
+	}
 	util.AddOwnerRef(service, util.OwnerRefFrom(cr))
 	return service
 }

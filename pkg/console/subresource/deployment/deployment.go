@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	// kube
-	"gopkg.in/yaml.v2"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -18,8 +18,6 @@ import (
 	configv1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
-	"github.com/openshift/console-operator/pkg/console/subresource/consoleserver"
-	routesub "github.com/openshift/console-operator/pkg/console/subresource/route"
 	"github.com/openshift/console-operator/pkg/console/subresource/util"
 )
 
@@ -157,17 +155,17 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 			},
 		},
 	}
-	if routesub.IsCustomRouteSet(operatorConfig) {
-		consoleConfig := consoleserver.Config{}
-		consoleConfigYAML := cm.Data["console-config.yaml"]
-		err := yaml.Unmarshal([]byte(consoleConfigYAML), &consoleConfig)
-		if err != nil {
-			klog.V(4).Infoln("unable to get redirect URL from console config")
-		}
-		if baseAddress := consoleConfig.ClusterInfo.ConsoleBaseAddress; baseAddress != "" {
-			deployment.Spec.Template.Spec.Containers = append(deployment.Spec.Template.Spec.Containers, redirectContainer(consoleConfig.ConsoleBaseAddress))
-		}
-	}
+	// if routesub.IsCustomRouteSet(operatorConfig) {
+	// 	consoleConfig := consoleserver.Config{}
+	// 	consoleConfigYAML := cm.Data["console-config.yaml"]
+	// 	err := yaml.Unmarshal([]byte(consoleConfigYAML), &consoleConfig)
+	// 	if err != nil {
+	// 		klog.V(4).Infoln("unable to get redirect URL from console config")
+	// 	}
+	// 	if baseAddress := consoleConfig.ClusterInfo.ConsoleBaseAddress; baseAddress != "" {
+	// 		deployment.Spec.Template.Spec.Containers = append(deployment.Spec.Template.Spec.Containers, redirectContainer(consoleConfig.ConsoleBaseAddress))
+	// 	}
+	// }
 	util.AddOwnerRef(deployment, util.OwnerRefFrom(operatorConfig))
 	return deployment
 }
