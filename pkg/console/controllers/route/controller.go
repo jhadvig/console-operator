@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -136,7 +135,7 @@ func (c *RouteSyncController) sync() error {
 	updatedOperatorConfig := operatorConfig.DeepCopy()
 	updateConditionFuncs := []v1helpers.UpdateStatusFunc{}
 
-	defaultRouteErrReason, defaultRouteErr := c.SyncDefaultRoute(updatedOperatorConfig)
+	defaultRoute, defaultRouteErrReason, defaultRouteErr := c.SyncDefaultRoute(updatedOperatorConfig)
 	defaultRouteSyncConditions := status.HandleProgressingOrDegraded("DefaultRouteSync", defaultRouteErrReason, defaultRouteErr)
 	updateConditionFuncs = append(updateConditionFuncs, defaultRouteSyncConditions...)
 	if defaultRouteErr != nil {
@@ -147,7 +146,7 @@ func (c *RouteSyncController) sync() error {
 		return defaultRouteErr
 	}
 
-	customRouteErrReason, customRouteErr := c.SyncCustomRoute(updatedOperatorConfig)
+	customRoute, customRouteErrReason, customRouteErr := c.SyncCustomRoute(updatedOperatorConfig)
 	customRouteSyncConditions := status.HandleProgressingOrDegraded("CustomRouteSync", customRouteErrReason, customRouteErr)
 	updateConditionFuncs = append(updateConditionFuncs, customRouteSyncConditions...)
 	if customRouteErr != nil {
@@ -158,7 +157,21 @@ func (c *RouteSyncController) sync() error {
 		return customRouteErr
 	}
 
-	// status.SyncStatus(c.ctx, c.operatorConfigClient, updatedOperatorConfig)
+	activeRoute := defaultRoute
+	if routesub.IsCustomRouteSet(updatedOperatorConfig) {
+		activeRoute = customRoute
+	}
+
+	routeHealthCheckErrReason, routeHealthCheckErr := c.CheckRouteHealth(updatedOperatorConfig, activeRoute)
+	healthCheckConditions := status.HandleDegraded("RouteHealth", routeHealthCheckErrReason, routeHealthCheckErr)
+	updateConditionFuncs = append(updateConditionFuncs, healthCheckConditions)
+	if routeHealthCheckErr != nil {
+		_, _, updateErr := v1helpers.UpdateStatus(c.operatorClient, updateConditionFuncs...)
+		if updateErr != nil {
+			return updateErr
+		}
+		return routeHealthCheckErr
+	}
 
 	_, _, updateErr := v1helpers.UpdateStatus(c.operatorClient, updateConditionFuncs...)
 	if updateErr != nil {
@@ -175,23 +188,19 @@ func (c *RouteSyncController) removeRoute(routeName string) error {
 	return err
 }
 
-func (c *RouteSyncController) SyncDefaultRoute(operatorConfig *operatorsv1.Console) (string, error) {
+func (c *RouteSyncController) SyncDefaultRoute(operatorConfig *operatorsv1.Console) (*routev1.Route, string, error) {
 	requiredDefaultRoute := routesub.DefaultRoute(operatorConfig)
 
 	defaultRoute, _, defaultRouteError := routesub.ApplyRoute(c.routeClient, c.recorder, requiredDefaultRoute)
 	if defaultRouteError != nil {
-		return "FailedDefaultRouteApply", defaultRouteError
+		return nil, "FailedDefaultRouteApply", defaultRouteError
 	}
 
 	if len(routesub.GetCanonicalHost(defaultRoute)) == 0 {
-		return "FailedDefaultRouteHost", customerrors.NewSyncError(fmt.Sprintf("default route is not available at canonical host %s", defaultRoute.Status.Ingress))
+		return nil, "FailedDefaultRouteHost", customerrors.NewSyncError(fmt.Sprintf("default route is not available at canonical host %s", defaultRoute.Status.Ingress))
 	}
 
-	if !routesub.IsCustomRouteSet(operatorConfig) {
-		c.CheckRouteHealth(operatorConfig, defaultRoute, nil)
-	}
-
-	return "", defaultRouteError
+	return defaultRoute, "", defaultRouteError
 }
 
 // Custom route sync needs to:
@@ -199,37 +208,35 @@ func (c *RouteSyncController) SyncDefaultRoute(operatorConfig *operatorsv1.Conso
 // 2. if secret is defined, verify the TLS certificate and key
 // 4. create the custom console route, if custom TLS certificate and key are defined use them
 // 5. apply the custom route
-func (c *RouteSyncController) SyncCustomRoute(operatorConfig *operatorsv1.Console) (string, error) {
+func (c *RouteSyncController) SyncCustomRoute(operatorConfig *operatorsv1.Console) (*routev1.Route, string, error) {
 	if !routesub.IsCustomRouteSet(operatorConfig) {
 		if err := c.removeRoute(api.OpenshiftConsoleCustomRouteName); err != nil {
-			return "FailedDeleteCustomRoutes", err
+			return nil, "FailedDeleteCustomRoutes", err
 		}
-		return "", nil
+		return nil, "", nil
 	}
 
 	customSecret, configErr := c.ValidateCustomRouteConfig(operatorConfig)
 	if configErr != nil {
-		return "InvalidCustomRouteConfig", configErr
+		return nil, "InvalidCustomRouteConfig", configErr
 	}
 
 	customTLSCert, secretValidationErr := ValidateCustomCertSecret(customSecret)
 	if secretValidationErr != nil {
-		return "InvalidCustomTLSSecret", secretValidationErr
+		return nil, "InvalidCustomTLSSecret", secretValidationErr
 	}
 
 	requiredCustomRoute := routesub.CustomRoute(operatorConfig, customTLSCert)
 	customRoute, _, customRouteError := routesub.ApplyRoute(c.routeClient, c.recorder, requiredCustomRoute)
 	if customRouteError != nil {
-		return "FailedCustomRouteApply", customRouteError
+		return nil, "FailedCustomRouteApply", customRouteError
 	}
 
 	if len(routesub.GetCanonicalHost(customRoute)) == 0 {
-		return "FailedCustomRouteHost", customerrors.NewSyncError(fmt.Sprintf("custom route is not available at canonical host %s", customRoute.Status.Ingress))
+		return nil, "FailedCustomRouteHost", customerrors.NewSyncError(fmt.Sprintf("custom route is not available at canonical host %s", customRoute.Status.Ingress))
 	}
 
-	c.CheckRouteHealth(operatorConfig, customRoute, customTLSCert)
-
-	return "", customRouteError
+	return customRoute, "", customRouteError
 }
 
 func (c *RouteSyncController) ValidateCustomRouteConfig(operatorConfig *operatorsv1.Console) (*corev1.Secret, error) {
@@ -374,50 +381,43 @@ func (c *RouteSyncController) newEventHandler() cache.ResourceEventHandler {
 	}
 }
 
-func (c *RouteSyncController) CheckRouteHealth(operatorConfig *operatorsv1.Console, route *routev1.Route, tlsCert *routesub.CustomTLSCert) {
-	status.HandleDegraded(func() (prefix string, reason string, err error) {
-		prefix = "RouteHealth"
+func (c *RouteSyncController) CheckRouteHealth(operatorConfig *operatorsv1.Console, route *routev1.Route) (string, error) {
+	if !routesub.IsAdmitted(route) {
+		return "RouteNotAdmitted", fmt.Errorf("console route is not admitted")
+	}
 
-		caPool, err := c.getCA(tlsCert)
-		if err != nil {
-			return prefix, "FailedLoadCA", fmt.Errorf("failed to read CA to check route health: %v", err)
-		}
-		client := clientWithCA(caPool)
+	caPool, err := c.getCA(route.Spec.TLS)
+	if err != nil {
+		return "FailedLoadCA", fmt.Errorf("failed to read CA to check route health: %v", err)
+	}
+	client := clientWithCA(caPool)
 
-		if len(route.Spec.Host) == 0 {
-			return prefix, "RouteHostError", fmt.Errorf("route does not have host specified")
-		}
-		url := "https://" + route.Spec.Host + "/health"
-		req, err := http.NewRequest(http.MethodGet, url, nil)
-		if err != nil {
-			return prefix, "FailedRequest", fmt.Errorf("failed to build request to route (%s): %v", url, err)
-		}
-		resp, err := client.Do(req)
-		if err != nil {
-			return prefix, "FailedGet", fmt.Errorf("failed to GET route (%s): %v", url, err)
-		}
-		defer resp.Body.Close()
+	if len(route.Spec.Host) == 0 {
+		return "RouteHostError", fmt.Errorf("route does not have host specified")
+	}
+	url := "https://" + route.Spec.Host + "/health"
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return "FailedRequest", fmt.Errorf("failed to build request to route (%s): %v", url, err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "FailedGet", fmt.Errorf("failed to GET route (%s): %v", url, err)
+	}
+	defer resp.Body.Close()
 
-		if resp.StatusCode != http.StatusOK {
-			return prefix, "StatusError", fmt.Errorf("route not yet available, %s returns '%s'", url, resp.Status)
+	if resp.StatusCode != http.StatusOK {
+		return "StatusError", fmt.Errorf("route not yet available, %s returns '%s'", url, resp.Status)
+	}
 
-		}
-		return prefix, "", nil
-	}())
-
-	status.HandleAvailable("Route", "FailedAdmittedIngress", func() error {
-		if !routesub.IsAdmitted(route) {
-			return errors.New("console route is not admitted")
-		}
-		return nil
-	}())
+	return "", nil
 }
 
-func (c *RouteSyncController) getCA(tlsCert *routesub.CustomTLSCert) (*x509.CertPool, error) {
+func (c *RouteSyncController) getCA(tls *routev1.TLSConfig) (*x509.CertPool, error) {
 	caCertPool := x509.NewCertPool()
 
-	if tlsCert != nil {
-		if ok := caCertPool.AppendCertsFromPEM([]byte(tlsCert.Certificate)); !ok {
+	if tls != nil && len(tls.Certificate) != 0 {
+		if ok := caCertPool.AppendCertsFromPEM([]byte(tls.Certificate)); !ok {
 			klog.V(4).Infof("failed to parse custom tls.crt")
 		}
 	}
