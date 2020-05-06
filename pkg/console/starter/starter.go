@@ -154,6 +154,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configClient.ConfigV1(),
 		configInformers,
 		// operator
+		operatorClient,
 		operatorConfigClient.OperatorV1(),
 		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
 

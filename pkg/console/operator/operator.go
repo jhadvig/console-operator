@@ -28,6 +28,7 @@ import (
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	"github.com/openshift/library-go/pkg/operator/status"
+	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
 	"monis.app/go/openshift/operator"
 
@@ -56,6 +57,7 @@ const (
 
 type consoleOperator struct {
 	// configs
+	operatorClient             v1helpers.OperatorClient
 	operatorConfigClient       operatorclientv1.ConsoleInterface
 	consoleConfigClient        configclientv1.ConsoleInterface
 	infrastructureConfigClient configclientv1.InfrastructureInterface
@@ -81,6 +83,7 @@ func NewConsoleOperator(
 	configClient configclientv1.ConfigV1Interface,
 	configInformer configinformer.SharedInformerFactory,
 	// operator
+	operatorClient v1helpers.OperatorClient,
 	operatorConfigClient operatorclientv1.OperatorV1Interface,
 	operatorConfigInformer operatorinformerv1.ConsoleInformer,
 	// core resources
@@ -106,6 +109,7 @@ func NewConsoleOperator(
 ) operator.Runner {
 	c := &consoleOperator{
 		// configs
+		operatorClient:             operatorClient,
 		operatorConfigClient:       operatorConfigClient.Consoles(),
 		consoleConfigClient:        configClient.Consoles(),
 		infrastructureConfigClient: configClient.Infrastructures(),
@@ -233,13 +237,17 @@ func (c *consoleOperator) handleSync(configs configSet) error {
 		return fmt.Errorf("console is in an unknown state: %v", updatedStatus.Spec.ManagementState)
 	}
 
-	err := c.sync_v400(updatedStatus, configs)
+	conditionFuncs, err := c.sync_v400(updatedStatus, configs)
 
 	// finally write out the set of conditions currently set if anything has changed
 	// to avoid a hot loop
-	if !reflect.DeepEqual(updatedStatus, configs.Operator) {
-		statushelpers.SyncStatus(c.ctx, c.operatorConfigClient, updatedStatus)
+	// if !reflect.DeepEqual(updatedStatus, configs.Operator) {
+	// 	statushelpers.SyncStatus(c.ctx, c.operatorConfigClient, updatedStatus)
+	// }
+	if _, _, updateErr := v1helpers.UpdateStatus(c.operatorClient, conditionFuncs...); updateErr != nil {
+		return updateErr
 	}
+
 	return err
 }
 
