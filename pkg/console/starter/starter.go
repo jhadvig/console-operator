@@ -228,6 +228,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 	consoleRouteController := route.NewRouteSyncController(
 		// top level config
+		operatorClient,
 		configClient.ConfigV1(),
 		// clients
 		operatorConfigClient.OperatorV1().Consoles(),

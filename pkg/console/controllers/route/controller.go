@@ -31,6 +31,7 @@ import (
 	routeclientv1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
 	"github.com/openshift/library-go/pkg/operator/events"
+	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
 	// console-operator
 	"github.com/openshift/console-operator/pkg/api"
@@ -46,6 +47,7 @@ const (
 
 type RouteSyncController struct {
 	// clients
+	operatorClient       v1helpers.OperatorClient
 	operatorConfigClient operatorclientv1.ConsoleInterface
 	ingressClient        configclientv1.IngressInterface
 	routeClient          routeclientv1.RoutesGetter
@@ -64,6 +66,7 @@ type RouteSyncController struct {
 
 func NewRouteSyncController(
 	// top level config
+	operatorClient v1helpers.OperatorClient,
 	configClient configclientv1.ConfigV1Interface,
 	// clients
 	operatorConfigClient operatorclientv1.ConsoleInterface,
@@ -82,6 +85,7 @@ func NewRouteSyncController(
 	ctx context.Context,
 ) *RouteSyncController {
 	ctrl := &RouteSyncController{
+		operatorClient:       operatorClient,
 		operatorConfigClient: operatorConfigClient,
 		ingressClient:        configClient.Ingresses(),
 		routeClient:          routev1Client,
@@ -130,17 +134,37 @@ func (c *RouteSyncController) sync() error {
 	}
 
 	updatedOperatorConfig := operatorConfig.DeepCopy()
+	updateConditionFuncs := []v1helpers.UpdateStatusFunc{}
 
 	defaultRouteErrReason, defaultRouteErr := c.SyncDefaultRoute(updatedOperatorConfig)
-	status.HandleProgressingOrDegraded(updatedOperatorConfig, "DefaultRouteSync", defaultRouteErrReason, defaultRouteErr)
+	defaultRouteSyncConditions := status.HandleProgressingOrDegraded("DefaultRouteSync", defaultRouteErrReason, defaultRouteErr)
+	updateConditionFuncs = append(updateConditionFuncs, defaultRouteSyncConditions...)
 	if defaultRouteErr != nil {
+		_, _, updateErr := v1helpers.UpdateStatus(c.operatorClient, updateConditionFuncs...)
+		if updateErr != nil {
+			return updateErr
+		}
 		return defaultRouteErr
 	}
 
 	customRouteErrReason, customRouteErr := c.SyncCustomRoute(updatedOperatorConfig)
-	status.HandleProgressingOrDegraded(updatedOperatorConfig, "CustomRouteSync", customRouteErrReason, customRouteErr)
+	customRouteSyncConditions := status.HandleProgressingOrDegraded("CustomRouteSync", customRouteErrReason, customRouteErr)
+	updateConditionFuncs = append(updateConditionFuncs, customRouteSyncConditions...)
+	if customRouteErr != nil {
+		_, _, updateErr := v1helpers.UpdateStatus(c.operatorClient, updateConditionFuncs...)
+		if updateErr != nil {
+			return updateErr
+		}
+		return customRouteErr
+	}
 
-	return err
+	// status.SyncStatus(c.ctx, c.operatorConfigClient, updatedOperatorConfig)
+
+	_, _, updateErr := v1helpers.UpdateStatus(c.operatorClient, updateConditionFuncs...)
+	if updateErr != nil {
+		return updateErr
+	}
+	return nil
 }
 
 func (c *RouteSyncController) removeRoute(routeName string) error {
@@ -351,37 +375,37 @@ func (c *RouteSyncController) newEventHandler() cache.ResourceEventHandler {
 }
 
 func (c *RouteSyncController) CheckRouteHealth(operatorConfig *operatorsv1.Console, route *routev1.Route, tlsCert *routesub.CustomTLSCert) {
-	status.HandleDegraded(func() (conf *operatorsv1.Console, prefix string, reason string, err error) {
+	status.HandleDegraded(func() (prefix string, reason string, err error) {
 		prefix = "RouteHealth"
 
 		caPool, err := c.getCA(tlsCert)
 		if err != nil {
-			return operatorConfig, prefix, "FailedLoadCA", fmt.Errorf("failed to read CA to check route health: %v", err)
+			return prefix, "FailedLoadCA", fmt.Errorf("failed to read CA to check route health: %v", err)
 		}
 		client := clientWithCA(caPool)
 
 		if len(route.Spec.Host) == 0 {
-			return operatorConfig, prefix, "RouteHostError", fmt.Errorf("route does not have host specified")
+			return prefix, "RouteHostError", fmt.Errorf("route does not have host specified")
 		}
 		url := "https://" + route.Spec.Host + "/health"
 		req, err := http.NewRequest(http.MethodGet, url, nil)
 		if err != nil {
-			return operatorConfig, prefix, "FailedRequest", fmt.Errorf("failed to build request to route (%s): %v", url, err)
+			return prefix, "FailedRequest", fmt.Errorf("failed to build request to route (%s): %v", url, err)
 		}
 		resp, err := client.Do(req)
 		if err != nil {
-			return operatorConfig, prefix, "FailedGet", fmt.Errorf("failed to GET route (%s): %v", url, err)
+			return prefix, "FailedGet", fmt.Errorf("failed to GET route (%s): %v", url, err)
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			return operatorConfig, prefix, "StatusError", fmt.Errorf("route not yet available, %s returns '%s'", url, resp.Status)
+			return prefix, "StatusError", fmt.Errorf("route not yet available, %s returns '%s'", url, resp.Status)
 
 		}
-		return operatorConfig, prefix, "", nil
+		return prefix, "", nil
 	}())
 
-	status.HandleAvailable(operatorConfig, "Route", "FailedAdmittedIngress", func() error {
+	status.HandleAvailable("Route", "FailedAdmittedIngress", func() error {
 		if !routesub.IsAdmitted(route) {
 			return errors.New("console route is not admitted")
 		}
