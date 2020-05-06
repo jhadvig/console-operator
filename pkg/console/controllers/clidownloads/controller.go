@@ -49,6 +49,7 @@ const (
 
 type CLIDownloadsSyncController struct {
 	// clients
+	operatorClient            v1helpers.OperatorClient
 	consoleCliDownloadsClient consoleclientv1.ConsoleCLIDownloadInterface
 	routeClient               routeclientv1.RoutesGetter
 	operatorConfigClient      operatorclientv1.ConsoleInterface
@@ -78,6 +79,7 @@ func NewCLIDownloadsSyncController(
 
 	ctrl := &CLIDownloadsSyncController{
 		// clients
+		operatorClient:            operatorClient,
 		consoleCliDownloadsClient: cliDownloadsInterface,
 		routeClient:               routeClient,
 		operatorConfigClient:      operatorConfigClient.Consoles(),
@@ -127,21 +129,34 @@ func (c *CLIDownloadsSyncController) sync() error {
 		return err
 	}
 
+	conditionFuncs := []v1helpers.UpdateStatusFunc{}
+
 	host := routesub.GetCanonicalHost(consoleRoute)
 	ocConsoleCLIDownloads := PlatformBasedOCConsoleCLIDownloads(host, api.OCCLIDownloadsCustomResourceName)
 	_, ocCLIDownloadsErrReason, ocCLIDownloadsErr := ApplyCLIDownloads(c.consoleCliDownloadsClient, ocConsoleCLIDownloads, c.ctx)
-	status.HandleDegraded(updatedOperatorConfig, "OCDownloadsSync", ocCLIDownloadsErrReason, ocCLIDownloadsErr)
+	ocCLIDownloadsCondition := status.HandleDegraded("OCDownloadsSync", ocCLIDownloadsErrReason, ocCLIDownloadsErr)
+	conditionFuncs = append(conditionFuncs, ocCLIDownloadsCondition)
 	if ocCLIDownloadsErr != nil {
+		if _, _, updateErr := v1helpers.UpdateStatus(c.operatorClient, conditionFuncs...); updateErr != nil {
+			return updateErr
+		}
 		return ocCLIDownloadsErr
 	}
 
 	_, odoCLIDownloadsErrReason, odoCLIDownloadsErr := ApplyCLIDownloads(c.consoleCliDownloadsClient, ODOConsoleCLIDownloads(), c.ctx)
-	status.HandleDegraded(updatedOperatorConfig, "ODODownloadsSync", odoCLIDownloadsErrReason, odoCLIDownloadsErr)
+	odoCLIDownloadsCondition := status.HandleDegraded("ODODownloadsSync", odoCLIDownloadsErrReason, odoCLIDownloadsErr)
+	conditionFuncs = append(conditionFuncs, odoCLIDownloadsCondition)
 	if odoCLIDownloadsErr != nil {
+		if _, _, updateErr := v1helpers.UpdateStatus(c.operatorClient, conditionFuncs...); updateErr != nil {
+			return updateErr
+		}
 		return odoCLIDownloadsErr
 	}
 
-	status.SyncStatus(c.ctx, c.operatorConfigClient, updatedOperatorConfig)
+	_, _, updateErr := v1helpers.UpdateStatus(c.operatorClient, conditionFuncs...)
+	if updateErr != nil {
+		return updateErr
+	}
 
 	return nil
 }

@@ -65,9 +65,9 @@ type RouteSyncController struct {
 
 func NewRouteSyncController(
 	// top level config
-	operatorClient v1helpers.OperatorClient,
 	configClient configclientv1.ConfigV1Interface,
 	// clients
+	operatorClient v1helpers.OperatorClient,
 	operatorConfigClient operatorclientv1.ConsoleInterface,
 	routev1Client routeclientv1.RoutesGetter,
 	configMapClient coreclientv1.ConfigMapsGetter,
@@ -99,10 +99,12 @@ func NewRouteSyncController(
 		ctx:          ctx,
 	}
 
+	operatorClient.Informer().AddEventHandler(ctrl.newEventHandler())
 	operatorConfigInformer.Informer().AddEventHandler(ctrl.newEventHandler())
 	routeInformer.Informer().AddEventHandler(ctrl.newEventHandler())
 
 	ctrl.cachesToSync = append(ctrl.cachesToSync,
+		operatorClient.Informer().HasSynced,
 		operatorConfigInformer.Informer().HasSynced,
 		routeInformer.Informer().HasSynced,
 	)
@@ -115,8 +117,9 @@ func (c *RouteSyncController) sync() error {
 	if err != nil {
 		return err
 	}
+	updatedOperatorConfig := operatorConfig.DeepCopy()
 
-	switch operatorConfig.Spec.ManagementState {
+	switch updatedOperatorConfig.Spec.ManagementState {
 	case operatorsv1.Managed:
 		klog.V(4).Infoln("console is in a managed state: syncing route")
 	case operatorsv1.Unmanaged:
@@ -129,18 +132,16 @@ func (c *RouteSyncController) sync() error {
 		}
 		return c.removeRoute(api.OpenShiftConsoleName)
 	default:
-		return fmt.Errorf("unknown state: %v", operatorConfig.Spec.ManagementState)
+		return fmt.Errorf("unknown state: %v", updatedOperatorConfig.Spec.ManagementState)
 	}
 
-	updatedOperatorConfig := operatorConfig.DeepCopy()
-	updateConditionFuncs := []v1helpers.UpdateStatusFunc{}
+	conditionFuncs := []v1helpers.UpdateStatusFunc{}
 
 	defaultRoute, defaultRouteErrReason, defaultRouteErr := c.SyncDefaultRoute(updatedOperatorConfig)
 	defaultRouteSyncConditions := status.HandleProgressingOrDegraded("DefaultRouteSync", defaultRouteErrReason, defaultRouteErr)
-	updateConditionFuncs = append(updateConditionFuncs, defaultRouteSyncConditions...)
+	conditionFuncs = append(conditionFuncs, defaultRouteSyncConditions...)
 	if defaultRouteErr != nil {
-		_, _, updateErr := v1helpers.UpdateStatus(c.operatorClient, updateConditionFuncs...)
-		if updateErr != nil {
+		if _, _, updateErr := v1helpers.UpdateStatus(c.operatorClient, conditionFuncs...); updateErr != nil {
 			return updateErr
 		}
 		return defaultRouteErr
@@ -148,10 +149,9 @@ func (c *RouteSyncController) sync() error {
 
 	customRoute, customRouteErrReason, customRouteErr := c.SyncCustomRoute(updatedOperatorConfig)
 	customRouteSyncConditions := status.HandleProgressingOrDegraded("CustomRouteSync", customRouteErrReason, customRouteErr)
-	updateConditionFuncs = append(updateConditionFuncs, customRouteSyncConditions...)
+	conditionFuncs = append(conditionFuncs, customRouteSyncConditions...)
 	if customRouteErr != nil {
-		_, _, updateErr := v1helpers.UpdateStatus(c.operatorClient, updateConditionFuncs...)
-		if updateErr != nil {
+		if _, _, updateErr := v1helpers.UpdateStatus(c.operatorClient, conditionFuncs...); updateErr != nil {
 			return updateErr
 		}
 		return customRouteErr
@@ -164,16 +164,15 @@ func (c *RouteSyncController) sync() error {
 
 	routeHealthCheckErrReason, routeHealthCheckErr := c.CheckRouteHealth(updatedOperatorConfig, activeRoute)
 	healthCheckConditions := status.HandleDegraded("RouteHealth", routeHealthCheckErrReason, routeHealthCheckErr)
-	updateConditionFuncs = append(updateConditionFuncs, healthCheckConditions)
+	conditionFuncs = append(conditionFuncs, healthCheckConditions)
 	if routeHealthCheckErr != nil {
-		_, _, updateErr := v1helpers.UpdateStatus(c.operatorClient, updateConditionFuncs...)
-		if updateErr != nil {
+		if _, _, updateErr := v1helpers.UpdateStatus(c.operatorClient, conditionFuncs...); updateErr != nil {
 			return updateErr
 		}
 		return routeHealthCheckErr
 	}
 
-	_, _, updateErr := v1helpers.UpdateStatus(c.operatorClient, updateConditionFuncs...)
+	_, _, updateErr := v1helpers.UpdateStatus(c.operatorClient, conditionFuncs...)
 	if updateErr != nil {
 		return updateErr
 	}

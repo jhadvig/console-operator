@@ -229,9 +229,9 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 
 	consoleRouteController := route.NewRouteSyncController(
 		// top level config
-		operatorClient,
 		configClient.ConfigV1(),
 		// clients
+		operatorClient,
 		operatorConfigClient.OperatorV1().Consoles(),
 		routesClient.RouteV1(),
 		kubeClient.CoreV1(),
