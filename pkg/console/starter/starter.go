@@ -148,7 +148,6 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		return err
 	}
 
-	// TODO: rearrange these into informer,client pairs, NOT separated.
 	consoleOperator := operator.NewConsoleOperator(
 		// top level config
 		configClient.ConfigV1(),
@@ -159,8 +158,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
 
 		// core resources
-		kubeClient.CoreV1(),                 // Secrets, ConfigMaps, Service
-		kubeInformersNamespaced.Core().V1(), // Secrets, ConfigMaps, Service
+		kubeClient.CoreV1(), // Secrets, ConfigMaps, Service
+		kubeInformersNamespaced.Core().V1().ConfigMaps(),
 		// deployments
 		kubeClient.AppsV1(),
 		kubeInformersNamespaced.Apps().V1().Deployments(), // Deployments
@@ -170,6 +169,9 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		// oauth
 		oauthClient.OauthV1(),
 		oauthInformers.Oauth().V1().OAuthClients(), // OAuth clients
+		// plugins
+		consoleClient.ConsoleV1().ConsolePlugins(),
+		consoleInformers.Console().V1().ConsolePlugins(),
 		// openshift managed
 		kubeInformersManagedNamespaced.Core().V1(), // Managed ConfigMaps
 		// event handling
@@ -324,7 +326,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	go consoleServiceController.Run(1, ctx.Done())
 	go consoleRouteController.Run(1, ctx.Done())
 	go resourceSyncDestinationController.Run(1, ctx.Done())
-	go consoleOperator.Run(ctx.Done())
+	go consoleOperator.Run(1, ctx.Done())
 	go cliDownloadsController.Run(1, ctx.Done())
 	// go staleConditionsController.Run(1, ctx.Done())
 
