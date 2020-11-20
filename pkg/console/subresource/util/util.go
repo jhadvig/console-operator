@@ -106,3 +106,17 @@ func HTTPS(host string) string {
 	secured := fmt.Sprintf("%s%s", protocol, host)
 	return secured
 }
+
+func RemoveDuplicates(elements []string) []string {
+	encountered := map[string]bool{}
+
+	for v := range elements {
+		encountered[elements[v]] = true
+	}
+
+	result := []string{}
+	for key, _ := range encountered {
+		result = append(result, key)
+	}
+	return result
+}

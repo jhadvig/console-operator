@@ -340,7 +340,7 @@ providers:
 					APIServerURL("https://foobar.com/api").
 					CustomHostnameRedirectPort(true).
 					StatusPageID("status-12345").
-					Plugins([]string{"plugin1", "plugin2"}).
+					Plugins([]string{"plugin1", "plugin2", "plugin2"}).
 					Monitoring(&corev1.ConfigMap{
 						Data: map[string]string{
 							"alertmanagerPublicURL": "https://alertmanager.url.com",

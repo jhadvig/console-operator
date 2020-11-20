@@ -112,7 +112,7 @@ func (b *ConsoleServerCLIConfigBuilder) InactivityTimeout(timeout int) *ConsoleS
 }
 
 func (b *ConsoleServerCLIConfigBuilder) Plugins(plugins []string) *ConsoleServerCLIConfigBuilder {
-	b.pluginsList = plugins
+	b.pluginsList = util.RemoveDuplicates(plugins)
 	return b
 }
 
