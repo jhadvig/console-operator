@@ -74,8 +74,12 @@ type NetworkSpec struct {
 	// by the operator. Currently only Kuryr SDN is affected by this setting.
 	// Please note that turning on extensive logging may affect performance.
 	// The default value is "Normal".
+	//
+	// Valid values are: "Normal", "Debug", "Trace", "TraceAll".
+	// Defaults to "Normal".
 	// +optional
-	LogLevel LogLevel `json:"logLevel"`
+	// +kubebuilder:default=Normal
+	LogLevel LogLevel `json:"logLevel,omitempty"`
 }
 
 // ClusterNetworkEntry is a subnet from which to allocate PodIPs. A network of size
@@ -317,6 +321,10 @@ type OVNKubernetesConfig struct {
 	// not using OVN.
 	// +optional
 	HybridOverlayConfig *HybridOverlayConfig `json:"hybridOverlayConfig,omitempty"`
+	// ipsecConfig enables and configures IPsec for pods on the pod network within the
+	// cluster.
+	// +optional
+	IPsecConfig *IPsecConfig `json:"ipsecConfig,omitempty"`
 }
 
 type HybridOverlayConfig struct {
@@ -328,6 +336,14 @@ type HybridOverlayConfig struct {
 	HybridOverlayVXLANPort *uint32 `json:"hybridOverlayVXLANPort,omitempty"`
 }
 
+type IPsecConfig struct {
+	// enable enables IPsec encryption for pod-to-pod traffic on the pod network
+	// within the cluster. Default is false.
+	// +optional
+	// +kubebuilder:default:=false
+	Enable bool `json:"enable"`
+}
+
 // NetworkType describes the network plugin type to configure
 type NetworkType string
 
@@ -337,7 +353,9 @@ type ProxyArgumentList []string
 // ProxyConfig defines the configuration knobs for kubeproxy
 // All of these are optional and have sensible defaults
 type ProxyConfig struct {
-	// The period that iptables rules are refreshed.
+	// An internal kube-proxy parameter. In older releases of OCP, this sometimes needed to be adjusted
+	// in large clusters for performance reasons, but this is no longer necessary, and there is no reason
+	// to change this from the default value.
 	// Default: 30s
 	IptablesSyncPeriod string `json:"iptablesSyncPeriod,omitempty"`
 
