@@ -19,6 +19,7 @@ import (
 	operatorv1 "github.com/openshift/api/operator"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
+	"github.com/openshift/console-operator/pkg/console/controllers/consoleconfig"
 	"github.com/openshift/console-operator/pkg/console/controllers/resourcesyncdestination"
 	"github.com/openshift/console-operator/pkg/console/controllers/route"
 	"github.com/openshift/console-operator/pkg/console/operatorclient"
@@ -179,6 +180,8 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		// context
 		ctx,
 	)
+
+	consoleConfigController := consoleconfig.NewConsoleConfigSyncController{}
 
 	cliDownloadsController := clidownloads.NewCLIDownloadsSyncController(
 		// clients

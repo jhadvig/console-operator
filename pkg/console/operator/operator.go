@@ -32,7 +32,6 @@ import (
 
 	// informers
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
-	consoleinformersv1 "github.com/openshift/client-go/console/informers/externalversions/console/v1"
 	operatorinformerv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 	routesinformersv1 "github.com/openshift/client-go/route/informers/externalversions/route/v1"
 	appsinformersv1 "k8s.io/client-go/informers/apps/v1"
@@ -98,9 +97,6 @@ func NewConsoleOperator(
 	// oauth
 	oauthv1Client oauthclientv1.OAuthClientsGetter,
 	oauthClients oauthinformersv1.OAuthClientInformer,
-	//plugins
-	consolePluginClient consoleclientv1.ConsolePluginInterface,
-	consolePluginInformer consoleinformersv1.ConsolePluginInformer,
 	// openshift managed
 	managedCoreV1 corev1.Interface,
 	// event handling
@@ -125,10 +121,9 @@ func NewConsoleOperator(
 		serviceClient:    corev1Client,
 		deploymentClient: deploymentClient,
 		// openshift
-		routeClient:         routev1Client,
-		oauthClient:         oauthv1Client,
-		consolePluginClient: consolePluginClient,
-		versionGetter:       versionGetter,
+		routeClient:   routev1Client,
+		oauthClient:   oauthv1Client,
+		versionGetter: versionGetter,
 		// recorder
 		recorder:       recorder,
 		resourceSyncer: resourceSyncer,
@@ -168,7 +163,7 @@ func (c *consoleOperator) Key() (metav1.Object, error) {
 	return c.operatorConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
 }
 
-type configSet struct {
+type ConfigSet struct {
 	Console        *configv1.Console
 	Operator       *operatorsv1.Console
 	Infrastructure *configv1.Infrastructure
@@ -210,7 +205,7 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 		return err
 	}
 
-	configs := configSet{
+	configs := ConfigSet{
 		Console:        consoleConfig,
 		Operator:       operatorConfig,
 		Infrastructure: infrastructureConfig,
@@ -225,7 +220,7 @@ func (c *consoleOperator) Sync(obj metav1.Object) error {
 	return nil
 }
 
-func (c *consoleOperator) handleSync(configs configSet) error {
+func (c *consoleOperator) handleSync(configs ConfigSet) error {
 	updatedStatus := configs.Operator.DeepCopy()
 
 	switch updatedStatus.Spec.ManagementState {

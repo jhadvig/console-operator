@@ -336,10 +336,6 @@ func (co *consoleOperator) SyncConfigMap(
 	return cm, cmChanged, "ConsoleConfigBuilder", cmErr
 }
 
-func (co *consoleOperator) GetAvailablePlugins(operatorConfig *operatorv1.Console) ([]string, error) {
-
-}
-
 // apply service-ca configmap
 func (co *consoleOperator) SyncServiceCAConfigMap(operatorConfig *operatorv1.Console) (consoleCM *corev1.ConfigMap, changed bool, reason string, err error) {
 	required := configmapsub.DefaultServiceCAConfigMap(operatorConfig)
