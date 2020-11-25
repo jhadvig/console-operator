@@ -4,6 +4,7 @@ import (
 	// standard lib
 	"context"
 	"fmt"
+	"time"
 
 	// kube
 	corev1 "k8s.io/api/core/v1"
@@ -11,8 +12,8 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	coreinformersv1 "k8s.io/client-go/informers/core/v1"
-	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -33,7 +34,6 @@ import (
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/v1helpers"
-	appsinformersv1 "k8s.io/client-go/informers/apps/v1"
 
 	// informers
 
@@ -61,13 +61,9 @@ type ConsoleConfigSyncController struct {
 	operatorConfigClient       operatorclientv1.ConsoleInterface
 	consoleConfigClient        configclientv1.ConsoleInterface
 	infrastructureConfigClient configclientv1.InfrastructureInterface
-	proxyConfigClient          configclientv1.ProxyInterface
 	oauthConfigClient          configclientv1.OAuthInterface
 	// core kube
-	secretsClient    coreclientv1.SecretsGetter
-	configMapClient  coreclientv1.ConfigMapsGetter
-	serviceClient    coreclientv1.ServicesGetter
-	deploymentClient appsv1.DeploymentsGetter
+	configMapClient coreclientv1.ConfigMapsGetter
 	// openshift
 	routeClient         routeclientv1.RoutesGetter
 	oauthClient         oauthclientv1.OAuthClientsGetter
@@ -92,18 +88,15 @@ func NewConsoleConfigSyncController(
 	// core resources
 	corev1Client coreclientv1.CoreV1Interface,
 	coreV1 coreinformersv1.Interface,
-	// deployments
-	deploymentClient appsv1.DeploymentsGetter,
-	deployments appsinformersv1.DeploymentInformer,
 	// routes
 	routev1Client routeclientv1.RoutesGetter,
-	routes routesinformersv1.RouteInformer,
+	routesInformer routesinformersv1.RouteInformer,
 	// oauth
 	oauthv1Client oauthclientv1.OAuthClientsGetter,
-	oauthClients oauthinformersv1.OAuthClientInformer,
+	oauthInformer oauthinformersv1.OAuthClientInformer,
 	// plugins
-	consolePluginInformer consoleinformersv1.ConsolePluginInformer,
 	consolePluginClient consoleclientv1.ConsolePluginInterface,
+	consolePluginInformer consoleinformersv1.ConsolePluginInformer,
 	// openshift managed
 	managedCoreV1 coreinformersv1.Interface,
 	// event handling
@@ -118,14 +111,10 @@ func NewConsoleConfigSyncController(
 		operatorConfigClient:       operatorConfigClient.Consoles(),
 		consoleConfigClient:        configClient.Consoles(),
 		infrastructureConfigClient: configClient.Infrastructures(),
-		proxyConfigClient:          configClient.Proxies(),
 		oauthConfigClient:          configClient.OAuths(),
 		// console resources
 		// core kube
-		secretsClient:    corev1Client,
-		configMapClient:  corev1Client,
-		serviceClient:    corev1Client,
-		deploymentClient: deploymentClient,
+		configMapClient: corev1Client,
 		// openshift
 		routeClient: routev1Client,
 		oauthClient: oauthv1Client,
@@ -136,14 +125,18 @@ func NewConsoleConfigSyncController(
 		ctx:          ctx,
 	}
 
+	oauthInformer.Informer().AddEventHandler(ctrl.newEventHandler())
 	operatorClient.Informer().AddEventHandler(ctrl.newEventHandler())
 	operatorConfigInformer.Informer().AddEventHandler(ctrl.newEventHandler())
 	consolePluginInformer.Informer().AddEventHandler(ctrl.newEventHandler())
+	routesInformer.Informer().AddEventHandler(ctrl.newEventHandler())
 
 	ctrl.cachesToSync = append(ctrl.cachesToSync,
+		oauthInformer.Informer().HasSynced,
 		operatorClient.Informer().HasSynced,
 		operatorConfigInformer.Informer().HasSynced,
 		consolePluginInformer.Informer().HasSynced,
+		routesInformer.Informer().HasSynced,
 	)
 
 	return ctrl
@@ -183,43 +176,26 @@ func (c *ConsoleConfigSyncController) sync() error {
 	}
 
 	// ensure we have top level console config
-	consoleConfig, err := c.consoleConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
-	if err != nil {
-		klog.Errorf("console config error: %v", err)
-		return err
+	consoleConfig, consoleConfigErr := c.consoleConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
+	if consoleConfigErr != nil {
+		return statusHandler.FlushAndReturn(consoleConfigErr)
 	}
 
 	// we need infrastructure config for apiServerURL
-	infrastructureConfig, err := c.infrastructureConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
-	if err != nil {
-		klog.Errorf("infrastructure config error: %v", err)
-		return err
+	infrastructureConfig, infrastructureConfigErr := c.infrastructureConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
+	if infrastructureConfigErr != nil {
+		return statusHandler.FlushAndReturn(infrastructureConfigErr)
 	}
 
-	oauthConfig, err := c.oauthConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
-	if err != nil {
-		klog.Errorf("oauth config error: %v", err)
-		return err
+	oauthConfig, oauthConfigErr := c.oauthConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
+	if oauthConfigErr != nil {
+		return statusHandler.FlushAndReturn(oauthConfigErr)
 	}
 
-	c.SyncConfigMap(operatorConfig, consoleConfig, infrastructureConfig, oauthConfig, route)
-
-	pluginsList, pluginsListErr := c.consolePluginClient.List(c.ctx, metav1.ListOptions{})
-	if pluginsListErr != nil {
-		return statusHandler.FlushAndReturn(pluginsListErr)
-	}
-
-	availablePluginsNames := make([]string, len(pluginsList.Items))
-	enabledPluginsNames := updatedOperatorConfig.Spec.Plugins
-	for _, plugin := range pluginsList.Items {
-		availablePluginsNames = append(availablePluginsNames, plugin.ObjectMeta.Name)
-	}
-
-	pluginsListSame := equality.Semantic.DeepEqual(enabledPluginsNames, availablePluginsNames)
-	if pluginsListSame != true {
-		newEnabledPlugins := removeUnavailablePlugins(enabledPluginsNames, availablePluginsNames)
-		specCopy := updatedOperatorConfig.Spec.DeepCopy()
-		specCopy.Plugins = newEnabledPlugins
+	_, consoleConfigMapErrReason, consoleConfigMapErr := c.SyncConfigMap(operatorConfig, consoleConfig, infrastructureConfig, oauthConfig, route)
+	if consoleConfigMapErr != nil {
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("SyncLoopRefresh", consoleConfigMapErrReason, routeErr))
+		return statusHandler.FlushAndReturn(consoleConfigMapErr)
 	}
 
 	return statusHandler.FlushAndReturn(nil)
@@ -230,11 +206,11 @@ func (c *ConsoleConfigSyncController) SyncConfigMap(
 	consoleConfig *configv1.Console,
 	infrastructureConfig *configv1.Infrastructure,
 	oauthConfig *configv1.OAuth,
-	activeConsoleRoute *routev1.Route) (consoleConfigMap *corev1.ConfigMap, changed bool, reason string, err error) {
+	activeConsoleRoute *routev1.Route) (*corev1.ConfigMap, string, error) {
 
 	managedConfig, mcErr := c.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(c.ctx, api.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
 	if mcErr != nil && !apierrors.IsNotFound(mcErr) {
-		return nil, false, "FailedGetManagedConfig", mcErr
+		return nil, "FailedGetManagedConfig", mcErr
 	}
 
 	useDefaultCAFile := false
@@ -250,7 +226,7 @@ func (c *ConsoleConfigSyncController) SyncConfigMap(
 	inactivityTimeoutSeconds := 0
 	oauthClient, oacErr := c.oauthClient.OAuthClients().Get(c.ctx, oauthsub.Stub().Name, metav1.GetOptions{})
 	if oacErr != nil {
-		return nil, false, "FailedGetOAuthClient", oacErr
+		return nil, "FailedGetOAuthClient", oacErr
 	}
 	if oauthClient.AccessTokenInactivityTimeoutSeconds != nil {
 		inactivityTimeoutSeconds = int(*oauthClient.AccessTokenInactivityTimeoutSeconds)
@@ -263,29 +239,44 @@ func (c *ConsoleConfigSyncController) SyncConfigMap(
 	pluginsList, pluginsListErr := c.consolePluginClient.List(c.ctx, metav1.ListOptions{})
 	klog.Infof("available---> %v", pluginsList.Items)
 	if pluginsListErr != nil {
-		return nil, false, "FailedGetConsolePlugins", pluginsListErr
+		return nil, "FailedGetConsolePlugins", pluginsListErr
 	}
 	enabledPlugins := getEnabledPlugins(operatorConfig, pluginsList.Items)
 	klog.Infof("enabled---> %v", enabledPlugins)
 
 	monitoringSharedConfig, mscErr := c.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(c.ctx, api.OpenShiftMonitoringConfigMapName, metav1.GetOptions{})
 	if mscErr != nil && !apierrors.IsNotFound(mscErr) {
-		return nil, false, "FailedGetMonitoringSharedConfig", mscErr
+		return nil, "FailedGetMonitoringSharedConfig", mscErr
 	}
 
 	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, monitoringSharedConfig, infrastructureConfig, activeConsoleRoute, useDefaultCAFile, inactivityTimeoutSeconds, enabledPlugins)
 	if err != nil {
-		return nil, false, "FailedConsoleConfigBuilder", err
+		return nil, "FailedConsoleConfigBuilder", err
 	}
 	cm, cmChanged, cmErr := resourceapply.ApplyConfigMap(c.configMapClient, c.recorder, defaultConfigmap)
 	if cmErr != nil {
-		return nil, false, "FailedApply", cmErr
+		return nil, "FailedApply", cmErr
 	}
 	if cmChanged {
 		klog.V(4).Infoln("new console config yaml:")
 		klog.V(4).Infof("%s", cm.Data)
 	}
-	return cm, cmChanged, "ConsoleConfigBuilder", cmErr
+	return cm, "ConsoleConfigBuilder", cmErr
+}
+
+func (c *ConsoleConfigSyncController) Run(workers int, stopCh <-chan struct{}) {
+	defer runtime.HandleCrash()
+	defer c.queue.ShutDown()
+	klog.Infof("starting %v", controllerName)
+	defer klog.Infof("shutting down %v", controllerName)
+	if !cache.WaitForCacheSync(stopCh, c.cachesToSync...) {
+		klog.Infoln("caches did not sync")
+		runtime.HandleError(fmt.Errorf("caches did not sync"))
+		return
+	}
+	// only start one worker
+	go wait.Until(c.runWorker, time.Second, stopCh)
+	<-stopCh
 }
 
 func (c *ConsoleConfigSyncController) runWorker() {

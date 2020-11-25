@@ -19,6 +19,7 @@ import (
 	operatorv1 "github.com/openshift/api/operator"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
+	"github.com/openshift/console-operator/pkg/console/controllers/consoleconfigmap"
 	"github.com/openshift/console-operator/pkg/console/controllers/resourcesyncdestination"
 	"github.com/openshift/console-operator/pkg/console/controllers/route"
 	"github.com/openshift/console-operator/pkg/console/operatorclient"
@@ -183,6 +184,34 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		ctx,
 	)
 
+	consoleConfigMapController := consoleconfigmap.NewConsoleConfigSyncController(
+		// top level config
+		configClient.ConfigV1(),
+		configInformers,
+		// operator
+		operatorClient,
+		operatorConfigClient.OperatorV1(),
+		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
+		// core resources
+		kubeClient.CoreV1(),                 // Secrets, ConfigMaps, Service
+		kubeInformersNamespaced.Core().V1(), // Secrets, ConfigMaps, Service
+		// routes
+		routesClient.RouteV1(),
+		routesInformersNamespaced.Route().V1().Routes(), // Route
+		// oauth
+		oauthClient.OauthV1(),
+		oauthInformers.Oauth().V1().OAuthClients(), // OAuth clients
+		// plugins
+		consoleClient.ConsoleV1().ConsolePlugins(),
+		consoleInformers.Console().V1().ConsolePlugins(),
+		// openshift managed
+		kubeInformersManagedNamespaced.Core().V1(), // Managed ConfigMaps
+		// recorder
+		recorder,
+		// context
+		ctx,
+	)
+
 	cliDownloadsController := clidownloads.NewCLIDownloadsSyncController(
 		// clients
 		operatorClient,
@@ -329,6 +358,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	go resourceSyncDestinationController.Run(1, ctx.Done())
 	go consoleOperator.Run(ctx.Done())
 	go cliDownloadsController.Run(1, ctx.Done())
+	go consoleConfigMapController.Run(1, ctx.Done())
 	// go staleConditionsController.Run(1, ctx.Done())
 
 	<-ctx.Done()
