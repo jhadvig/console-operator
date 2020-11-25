@@ -356,9 +356,9 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	go consoleServiceController.Run(1, ctx.Done())
 	go consoleRouteController.Run(1, ctx.Done())
 	go resourceSyncDestinationController.Run(1, ctx.Done())
+	go consoleConfigMapController.Run(1, ctx.Done())
 	go consoleOperator.Run(ctx.Done())
 	go cliDownloadsController.Run(1, ctx.Done())
-	go consoleConfigMapController.Run(1, ctx.Done())
 	// go staleConditionsController.Run(1, ctx.Done())
 
 	<-ctx.Done()
