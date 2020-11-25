@@ -55,6 +55,14 @@ const (
 	controllerName         = "ConsoleConsoleConfigSyncController"
 )
 
+type configSet struct {
+	Console        *configv1.Console
+	Operator       *operatorv1.Console
+	Infrastructure *configv1.Infrastructure
+	Proxy          *configv1.Proxy
+	OAuth          *configv1.OAuth
+}
+
 type ConsoleConfigSyncController struct {
 	// configs
 	operatorClient             v1helpers.OperatorClient
@@ -169,36 +177,52 @@ func (c *ConsoleConfigSyncController) sync() error {
 		routeName = api.OpenshiftConsoleCustomRouteName
 	}
 
+	configSet, configSetReason, configSetErr := c.GetConfigSet()
+	if configSetErr != nil {
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("SyncLoopRefresh", configSetReason, configSetErr))
+		return statusHandler.FlushAndReturn(configSetErr)
+	}
+
 	route, routeErr := c.routeClient.Routes(api.TargetNamespace).Get(c.ctx, routeName, metav1.GetOptions{})
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("SyncLoopRefresh", "InProgress", routeErr))
 	if routeErr != nil {
+		statusHandler.AddConditions(status.HandleProgressingOrDegraded("SyncLoopRefresh", "Failed", routeErr))
 		return statusHandler.FlushAndReturn(routeErr)
 	}
 
-	// ensure we have top level console config
-	consoleConfig, consoleConfigErr := c.consoleConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
-	if consoleConfigErr != nil {
-		return statusHandler.FlushAndReturn(consoleConfigErr)
-	}
-
-	// we need infrastructure config for apiServerURL
-	infrastructureConfig, infrastructureConfigErr := c.infrastructureConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
-	if infrastructureConfigErr != nil {
-		return statusHandler.FlushAndReturn(infrastructureConfigErr)
-	}
-
-	oauthConfig, oauthConfigErr := c.oauthConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
-	if oauthConfigErr != nil {
-		return statusHandler.FlushAndReturn(oauthConfigErr)
-	}
-
-	_, consoleConfigMapErrReason, consoleConfigMapErr := c.SyncConfigMap(operatorConfig, consoleConfig, infrastructureConfig, oauthConfig, route)
+	_, consoleConfigMapErrReason, consoleConfigMapErr := c.SyncConfigMap(operatorConfig, configSet.Console, configSet.Infrastructure, configSet.OAuth, route)
 	if consoleConfigMapErr != nil {
 		statusHandler.AddConditions(status.HandleProgressingOrDegraded("SyncLoopRefresh", consoleConfigMapErrReason, routeErr))
 		return statusHandler.FlushAndReturn(consoleConfigMapErr)
 	}
 
 	return statusHandler.FlushAndReturn(nil)
+}
+
+func (c *ConsoleConfigSyncController) GetConfigSet() (*configSet, string, error) {
+	// ensure we have top level console config
+	consoleConfig, err := c.consoleConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		return nil, "FailedGetConsoleConfig", err
+	}
+
+	// we need infrastructure config for apiServerURL
+	infrastructureConfig, err := c.infrastructureConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		return nil, "FailedGetInfrastructureConfig", err
+	}
+
+	oauthConfig, oauthConfigErr := c.oauthConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
+	if oauthConfigErr != nil {
+		return nil, "FailedGetOAuth", err
+	}
+
+	configs := &configSet{
+		Console:        consoleConfig,
+		Infrastructure: infrastructureConfig,
+		OAuth:          oauthConfig,
+	}
+	return configs, "", nil
 }
 
 func (c *ConsoleConfigSyncController) SyncConfigMap(
