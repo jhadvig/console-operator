@@ -162,7 +162,7 @@ func NewConsoleOperator(
 		operator.WithInformer(managedConfigMapInformer, operator.FilterByNames(api.OpenShiftConsoleConfigMapName, api.OpenShiftConsolePublicConfigMapName)),
 		operator.WithInformer(secretsInformer, operator.FilterByNames(deployment.ConsoleOauthConfigName)),
 		// plugins
-		operator.WithInformer(consolePluginInformer, operator.FilterByNames()),
+		// operator.WithInformer(consolePluginInformer, acceptAllFilter()),
 	)
 }
 
@@ -170,6 +170,14 @@ func NewConsoleOperator(
 func (c *consoleOperator) Key() (metav1.Object, error) {
 	return c.operatorConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
 }
+
+// func acceptAllFilter() *controller.FilterFuncs {
+// 	return &controller.FilterFuncs{
+// 		AddFunc:    func(obj, metav1.Object) { return true },
+// 		UpdateFunc: func(_, _, metav1.Object) { return true },
+// 		DeleteFunc: func(_, metav1.Object) { return true },
+// 	}
+// }
 
 type configSet struct {
 	Console        *configv1.Console

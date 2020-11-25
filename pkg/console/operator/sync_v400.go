@@ -68,9 +68,13 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 		return statusHandler.FlushAndReturn(routeErr)
 	}
 
-	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(set.Operator, set.Console, set.Infrastructure, set.OAuth, route)
-	toUpdate = toUpdate || cmChanged
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
+	// cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(set.Operator, set.Console, set.Infrastructure, set.OAuth, route)
+	// toUpdate = toUpdate || cmChanged
+	// statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
+	// if cmErr != nil {
+	// 	return statusHandler.FlushAndReturn(cmErr)
+	// }
+	cm, cmErr := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(co.ctx, api.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
 	if cmErr != nil {
 		return statusHandler.FlushAndReturn(cmErr)
 	}
@@ -179,9 +183,9 @@ func (co *consoleOperator) sync_v400(updatedOperatorConfig *operatorv1.Console, 
 	defer func() {
 		klog.V(4).Infof("sync loop 4.0.0 complete")
 
-		if cmChanged {
-			klog.V(4).Infof("\t configmap changed: %v", cm.GetResourceVersion())
-		}
+		// if cmChanged {
+		// 	klog.V(4).Infof("\t configmap changed: %v", cm.GetResourceVersion())
+		// }
 		if serviceCAChanged {
 			klog.V(4).Infof("\t service-ca configmap changed: %v", serviceCAConfigMap.GetResourceVersion())
 		}
