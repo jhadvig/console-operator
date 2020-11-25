@@ -130,8 +130,10 @@ func NewConsoleConfigSyncController(
 		routeClient: routev1Client,
 		oauthClient: oauthv1Client,
 		// recorder
-		recorder: recorder,
-		ctx:      ctx,
+		recorder:     recorder,
+		cachesToSync: nil,
+		queue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerName),
+		ctx:          ctx,
 	}
 
 	operatorClient.Informer().AddEventHandler(ctrl.newEventHandler())
