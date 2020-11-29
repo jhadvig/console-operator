@@ -21,6 +21,8 @@ import (
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	configclientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	configinformer "github.com/openshift/client-go/config/informers/externalversions"
+	consoleclientv1 "github.com/openshift/client-go/console/clientset/versioned/typed/console/v1"
+	consoleinformersv1 "github.com/openshift/client-go/console/informers/externalversions/console/v1"
 	oauthclientv1 "github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1"
 	oauthinformersv1 "github.com/openshift/client-go/oauth/informers/externalversions/oauth/v1"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
@@ -43,9 +45,9 @@ import (
 	"github.com/openshift/console-operator/pkg/console/subresource/secret"
 )
 
-const (
-	controllerName = "Console"
-)
+// const (
+// 	controllerName = "Console"
+// )
 
 type consoleOperator struct {
 	// configs
@@ -55,6 +57,7 @@ type consoleOperator struct {
 	infrastructureConfigClient configclientv1.InfrastructureInterface
 	proxyConfigClient          configclientv1.ProxyInterface
 	oauthConfigClient          configclientv1.OAuthInterface
+	consolePluginClient        consoleclientv1.ConsolePluginInterface
 	// core kube
 	secretsClient    coreclientv1.SecretsGetter
 	configMapClient  coreclientv1.ConfigMapsGetter
@@ -81,13 +84,16 @@ func NewConsoleOperator(
 	coreV1 corev1.Interface,
 	// deployments
 	deploymentClient appsv1.DeploymentsGetter,
-	deployments appsinformersv1.DeploymentInformer,
+	deploymentInformer appsinformersv1.DeploymentInformer,
 	// routes
 	routev1Client routeclientv1.RoutesGetter,
-	routes routesinformersv1.RouteInformer,
+	routeInformer routesinformersv1.RouteInformer,
 	// oauth
 	oauthv1Client oauthclientv1.OAuthClientsGetter,
 	oauthClients oauthinformersv1.OAuthClientInformer,
+	// plugins
+	consolePluginClient consoleclientv1.ConsolePluginInterface,
+	consolePluginInformer consoleinformersv1.ConsolePluginInformer,
 	// openshift managed
 	managedCoreV1 corev1.Interface,
 	// event handling
@@ -136,10 +142,11 @@ func NewConsoleOperator(
 			configV1Informers.OAuths().Informer(),
 		).WithFilteredEventsInformers( // console resources
 		targetNameFilter,
-		deployments.Informer(),
-		routes.Informer(),
+		deploymentInformer.Informer(),
+		routeInformer.Informer(),
 		serviceInformer.Informer(),
 		oauthClients.Informer(),
+		consolePluginInformer.Informer(),
 	).WithFilteredEventsInformers(
 		namesFilter(api.OpenShiftConsoleConfigMapName, api.ServiceCAConfigMapName, api.OpenShiftCustomLogoConfigMapName, api.TrustedCAConfigMapName),
 		configMapInformer.Informer(),
