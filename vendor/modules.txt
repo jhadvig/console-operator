@@ -102,7 +102,7 @@ github.com/modern-go/concurrent
 github.com/modern-go/reflect2
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 github.com/munnerz/goautoneg
-# github.com/openshift/api v0.0.0-20201117184740-859beeffd973
+# github.com/openshift/api v0.0.0-20201117184740-859beeffd973 => github.com/jhadvig/api v0.0.0-20201120110223-105453730373
 ## explicit
 github.com/openshift/api
 github.com/openshift/api/apps
@@ -165,7 +165,7 @@ github.com/openshift/build-machinery-go/make/targets/golang
 github.com/openshift/build-machinery-go/make/targets/openshift
 github.com/openshift/build-machinery-go/make/targets/openshift/operator
 github.com/openshift/build-machinery-go/scripts
-# github.com/openshift/client-go v0.0.0-20201020074620-f8fd44879f7c
+# github.com/openshift/client-go v0.0.0-20201020074620-f8fd44879f7c => github.com/jhadvig/client-go v0.0.0-20201120114228-b390d4a67199
 ## explicit
 github.com/openshift/client-go/config/clientset/versioned
 github.com/openshift/client-go/config/clientset/versioned/scheme
@@ -914,3 +914,5 @@ sigs.k8s.io/structured-merge-diff/v4/typed
 sigs.k8s.io/structured-merge-diff/v4/value
 # sigs.k8s.io/yaml v1.2.0
 sigs.k8s.io/yaml
+# github.com/openshift/api => github.com/jhadvig/api v0.0.0-20201120110223-105453730373
+# github.com/openshift/client-go => github.com/jhadvig/client-go v0.0.0-20201120114228-b390d4a67199
