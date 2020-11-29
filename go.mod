@@ -10,7 +10,7 @@ require (
 	github.com/go-logr/logr v0.3.0 // indirect
 	github.com/go-test/deep v1.0.5
 	github.com/google/gofuzz v1.2.0 // indirect
-	github.com/openshift/api v0.0.0-20201117184740-859beeffd973
+	github.com/openshift/api v0.0.0-20201120165435-072a4cd8ca42
 	github.com/openshift/build-machinery-go v0.0.0-20200917070002-f171684f77ab
 	github.com/openshift/client-go v0.0.0-20201020074620-f8fd44879f7c
 	github.com/openshift/library-go v0.0.0-20201123212217-43f358922ea0
@@ -26,4 +26,9 @@ require (
 	k8s.io/component-base v0.19.2
 	k8s.io/klog/v2 v2.4.0
 	sigs.k8s.io/structured-merge-diff/v4 v4.0.2 // indirect
+)
+
+replace (
+	github.com/openshift/api => github.com/jhadvig/api v0.0.0-20201130084305-a196d39fbfab
+	github.com/openshift/client-go => github.com/jhadvig/client-go v0.0.0-20201130085649-57b5826f479f
 )
