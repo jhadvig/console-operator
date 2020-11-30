@@ -9,12 +9,14 @@ import (
 	// kube
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 
 	// openshift
 	configv1 "github.com/openshift/api/config/v1"
+	v1 "github.com/openshift/api/console/v1"
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -329,12 +331,18 @@ func (co *consoleOperator) SyncConfigMap(
 		}
 	}
 
+	pluginsList, pluginsListErr := co.consolePluginClient.List(ctx, metav1.ListOptions{})
+	if pluginsListErr != nil {
+		return nil, false, "FailedGetConsolePlugins", pluginsListErr
+	}
+	enabledPlugins := getEnabledPlugins(operatorConfig, pluginsList.Items)
+
 	monitoringSharedConfig, mscErr := co.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(ctx, api.OpenShiftMonitoringConfigMapName, metav1.GetOptions{})
 	if mscErr != nil && !apierrors.IsNotFound(mscErr) {
 		return nil, false, "FailedGetMonitoringSharedConfig", mscErr
 	}
 
-	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, monitoringSharedConfig, infrastructureConfig, activeConsoleRoute, useDefaultCAFile, inactivityTimeoutSeconds)
+	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(operatorConfig, consoleConfig, managedConfig, monitoringSharedConfig, infrastructureConfig, activeConsoleRoute, useDefaultCAFile, inactivityTimeoutSeconds, enabledPlugins)
 	if err != nil {
 		return nil, false, "FailedConsoleConfigBuilder", err
 	}
@@ -500,4 +508,39 @@ func getConsoleURL(route *routev1.Route) (string, error) {
 		return "", err
 	}
 	return util.HTTPS(host), nil
+}
+
+// return plugins that are:
+// - enabled in the console-operator config
+// - created and available as a CR on the cluster
+func getEnabledPlugins(operatorConfig *operatorv1.Console, pluginsList []v1.ConsolePlugin) []string {
+	availablePluginsNames := []string{}
+	enabledPluginsNames := operatorConfig.Spec.Plugins
+	for _, plugin := range pluginsList {
+		availablePluginsNames = append(availablePluginsNames, plugin.ObjectMeta.Name)
+	}
+
+	pluginsListSame := equality.Semantic.DeepEqual(enabledPluginsNames, availablePluginsNames)
+	if pluginsListSame == true {
+		return enabledPluginsNames
+	}
+	newEnabledPlugins := removeUnavailablePlugins(enabledPluginsNames, availablePluginsNames)
+	return newEnabledPlugins
+}
+
+// intersection of enabled and available plugins
+func removeUnavailablePlugins(enabledPlugins, availablePlugins []string) []string {
+	m := make(map[string]bool)
+
+	for _, item := range enabledPlugins {
+		m[item] = true
+	}
+
+	intersection := []string{}
+	for _, item := range availablePlugins {
+		if _, ok := m[item]; ok {
+			intersection = append(intersection, item)
+		}
+	}
+	return intersection
 }
