@@ -22,7 +22,8 @@ import (
 
 const (
 	ConsoleOauthConfigName = "console-oauth-config"
-	ConsoleReplicas        = 2
+	ConsoleDefaultReplicas = 2
+	ConsoleSingleReplica   = 1
 )
 
 const (
@@ -58,7 +59,7 @@ type volumeConfig struct {
 	mappedKeys  map[string]string
 }
 
-func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, defaultIngressCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, canMountCustomLogo bool) *appsv1.Deployment {
+func DefaultDeployment(operatorConfig *operatorv1.Console, infrastructureConfig *configv1.Infrastructure, cm *corev1.ConfigMap, serviceCAConfigMap *corev1.ConfigMap, defaultIngressCertConfigMap *corev1.ConfigMap, trustedCAConfigMap *corev1.ConfigMap, sec *corev1.Secret, proxyConfig *configv1.Proxy, canMountCustomLogo bool) *appsv1.Deployment {
 	labels := util.LabelsForConsole()
 	meta := util.SharedMeta()
 	meta.Labels = labels
@@ -74,7 +75,7 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 	// Set any annotations as needed so that `ApplyDeployment` rolls out a
 	// new version when they change.
 	meta.Annotations = annotations
-	replicas := int32(ConsoleReplicas)
+	replicas := deploymentReplicas(infrastructureConfig)
 	gracePeriod := int64(40)
 	tolerationSeconds := int64(120)
 	volumeConfig := defaultVolumeConfig()
@@ -106,20 +107,7 @@ func DefaultDeployment(operatorConfig *operatorv1.Console, cm *corev1.ConfigMap,
 						// empty string is correct
 						"node-role.kubernetes.io/master": "",
 					},
-					Affinity: &corev1.Affinity{
-						// spread out across master nodes rather than congregate on one
-						PodAntiAffinity: &corev1.PodAntiAffinity{
-							PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
-								Weight: 100,
-								PodAffinityTerm: corev1.PodAffinityTerm{
-									LabelSelector: &metav1.LabelSelector{
-										MatchLabels: util.SharedLabels(),
-									},
-									TopologyKey: "topology.kubernetes.io/zone",
-								},
-							}},
-						},
-					},
+					Affinity: deploymentAffinity(infrastructureConfig),
 					// toleration is a taint override. we can and should be scheduled on a master node.
 					Tolerations: []corev1.Toleration{
 						{
@@ -449,4 +437,33 @@ func customLogoVolume() volumeConfig {
 		name:        api.OpenShiftCustomLogoConfigMapName,
 		path:        "/var/logo/",
 		isConfigMap: true}
+}
+
+func deploymentReplicas(infrastructureConfig *configv1.Infrastructure) int32 {
+	// if infrastructureConfig.Status.InfrastructureTopology == configv1.TopologyMode.SingleReplicaTopologyMode {
+	if false {
+		return ConsoleSingleReplica
+	}
+	return ConsoleDefaultReplicas
+}
+
+func deploymentAffinity(infrastructureConfig *configv1.Infrastructure) *corev1.Affinity {
+	// if infrastructureConfig.Status.InfrastructureTopology == configv1.TopologyMode.SingleReplicaTopologyMode {
+	if false {
+		return &corev1.Affinity{}
+	}
+	return &corev1.Affinity{
+		// spread out across master nodes rather than congregate on one
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+				Weight: 100,
+				PodAffinityTerm: corev1.PodAffinityTerm{
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: util.SharedLabels(),
+					},
+					TopologyKey: "topology.kubernetes.io/zone",
+				},
+			}},
+		},
+	}
 }

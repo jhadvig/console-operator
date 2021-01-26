@@ -23,14 +23,15 @@ func TestDefaultDeployment(t *testing.T) {
 		gracePeriod  int64 = 40
 	)
 	type args struct {
-		config             *operatorsv1.Console
-		cm                 *corev1.ConfigMap
-		ca                 *corev1.ConfigMap
-		dica               *corev1.ConfigMap
-		tca                *corev1.ConfigMap
-		sec                *corev1.Secret
-		proxy              *configv1.Proxy
-		canMountCustomLogo bool
+		operatorConfig       *operatorsv1.Console
+		infrastructureConfig *configv1.Infrastructure
+		cm                   *corev1.ConfigMap
+		ca                   *corev1.ConfigMap
+		dica                 *corev1.ConfigMap
+		tca                  *corev1.ConfigMap
+		sec                  *corev1.Secret
+		proxy                *configv1.Proxy
+		canMountCustomLogo   bool
 	}
 
 	consoleOperatorConfig := &operatorsv1.Console{
@@ -160,9 +161,9 @@ func TestDefaultDeployment(t *testing.T) {
 		{
 			name: "Test Default Config Map",
 			args: args{
-				config: consoleOperatorConfig,
-				cm:     consoleConfig,
-				ca:     &corev1.ConfigMap{},
+				operatorConfig: consoleOperatorConfig,
+				cm:             consoleConfig,
+				ca:             &corev1.ConfigMap{},
 				dica: &corev1.ConfigMap{
 					Data: map[string]string{"ca-bundle.crt": "test"},
 				},
@@ -222,9 +223,9 @@ func TestDefaultDeployment(t *testing.T) {
 		{
 			name: "Test Trusted CA Config Map",
 			args: args{
-				config: consoleOperatorConfig,
-				cm:     consoleConfig,
-				ca:     &corev1.ConfigMap{},
+				operatorConfig: consoleOperatorConfig,
+				cm:             consoleConfig,
+				ca:             &corev1.ConfigMap{},
 				dica: &corev1.ConfigMap{
 					Data: map[string]string{"ca-bundle.crt": "test"},
 				},
@@ -284,7 +285,7 @@ func TestDefaultDeployment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if diff := deep.Equal(DefaultDeployment(tt.args.config, tt.args.cm, tt.args.dica, tt.args.cm, tt.args.tca, tt.args.sec, tt.args.proxy, tt.args.canMountCustomLogo), tt.want); diff != nil {
+			if diff := deep.Equal(DefaultDeployment(tt.args.operatorConfig, tt.args.cm, tt.args.dica, tt.args.cm, tt.args.tca, tt.args.sec, tt.args.proxy, tt.args.canMountCustomLogo), tt.want); diff != nil {
 				t.Error(diff)
 			}
 		})
