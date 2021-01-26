@@ -224,8 +224,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		api.OpenShiftConsoleName,
 		// events
 		recorder,
-		// context
-		ctx,
+		resourceSyncer,
 	)
 
 	consoleRouteController := route.NewRouteSyncController(
@@ -317,12 +316,13 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		logLevelController,
 		managementStateController,
 		configUpgradeableController,
+		consoleServiceController,
 		consoleOperator,
 	} {
 		go controller.Run(ctx, 1)
 	}
 
-	go consoleServiceController.Run(1, ctx.Done())
+	// go consoleServiceController.Run(1, ctx.Done())
 	go consoleRouteController.Run(1, ctx.Done())
 	go resourceSyncDestinationController.Run(1, ctx.Done())
 	go cliDownloadsController.Run(1, ctx.Done())
