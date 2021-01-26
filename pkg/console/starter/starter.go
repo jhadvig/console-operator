@@ -190,10 +190,9 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		operatorConfigInformers.Operator().V1().Consoles(),    // OperatorConfig
 		consoleInformers.Console().V1().ConsoleCLIDownloads(), // ConsoleCliDownloads
 		routesInformersNamespaced.Route().V1().Routes(),       // Routes
-		// recorder
+		// events
 		recorder,
-		// context
-		ctx,
+		resourceSyncer,
 	)
 
 	// ResourceSyncDestinationController contains additional logic for all the
@@ -317,11 +316,11 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		consoleServiceController,
 		consoleRouteController,
 		consoleOperator,
+		cliDownloadsController,
 	} {
 		go controller.Run(ctx, 1)
 	}
 
-	go cliDownloadsController.Run(1, ctx.Done())
 	// go staleConditionsController.Run(1, ctx.Done())
 
 	<-ctx.Done()
