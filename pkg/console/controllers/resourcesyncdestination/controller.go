@@ -3,22 +3,20 @@ package resourcesyncdestination
 import (
 	"context"
 	"fmt"
-	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
-	coreinformersv1 "k8s.io/client-go/informers/core/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 
 	operatorsv1 "github.com/openshift/api/operator/v1"
 	operatorclientv1 "github.com/openshift/client-go/operator/clientset/versioned/typed/operator/v1"
 	operatorinformersv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
+	"github.com/openshift/console-operator/pkg/console/controllers/util"
+	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
+	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 )
 
 const (
@@ -30,11 +28,7 @@ type ResourceSyncDestinationController struct {
 	operatorConfigClient operatorclientv1.ConsoleInterface
 	configMapClient      coreclientv1.ConfigMapsGetter
 	// events
-	cachesToSync []cache.InformerSynced
-	queue        workqueue.RateLimitingInterface
-	recorder     events.Recorder
-	// context
-	ctx context.Context
+	resourceSyncer resourcesynccontroller.ResourceSyncer
 }
 
 func NewResourceSyncDestinationController(
@@ -43,36 +37,31 @@ func NewResourceSyncDestinationController(
 	operatorConfigInformer operatorinformersv1.ConsoleInformer,
 	// configmap
 	corev1Client coreclientv1.CoreV1Interface,
-	configMapInformer coreinformersv1.ConfigMapInformer,
 	// events
 	recorder events.Recorder,
-	// context
-	ctx context.Context,
-) *ResourceSyncDestinationController {
+	resourceSyncer resourcesynccontroller.ResourceSyncer,
+) factory.Controller {
 	corev1Client.ConfigMaps(api.OpenShiftConsoleNamespace)
 
 	ctrl := &ResourceSyncDestinationController{
 		operatorConfigClient: operatorConfigClient,
 		configMapClient:      corev1Client,
 		// events
-		recorder:     recorder,
-		cachesToSync: nil,
-		queue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerName),
-		ctx:          ctx,
+		resourceSyncer: resourceSyncer,
 	}
 
-	configMapInformer.Informer().AddEventHandler(ctrl.newEventHandler())
-	operatorConfigInformer.Informer().AddEventHandler(ctrl.newEventHandler())
-	ctrl.cachesToSync = append(ctrl.cachesToSync,
-		operatorConfigInformer.Informer().HasSynced,
-		configMapInformer.Informer().HasSynced,
-	)
+	configNameFilter := util.NamesFilter(api.ConfigResourceName)
 
-	return ctrl
+	return factory.New().
+		WithFilteredEventsInformers( // configs
+			configNameFilter,
+			operatorConfigInformer.Informer(),
+		).WithSync(ctrl.Sync).
+		ToController("ConsoleResourceSyncDestinationController", recorder.WithComponentSuffix("console-resource-sync-destination-controller"))
 }
 
-func (c *ResourceSyncDestinationController) sync() error {
-	operatorConfig, err := c.operatorConfigClient.Get(c.ctx, api.ConfigResourceName, metav1.GetOptions{})
+func (c *ResourceSyncDestinationController) Sync(ctx context.Context, controllerContext factory.SyncContext) error {
+	operatorConfig, err := c.operatorConfigClient.Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -85,7 +74,7 @@ func (c *ResourceSyncDestinationController) sync() error {
 		return nil
 	case operatorsv1.Removed:
 		klog.V(4).Infoln("console is in an removed state: removing synced default-ingress-cert configmap")
-		return c.removeDefaultIngressCertConfigMap()
+		return c.removeDefaultIngressCertConfigMap(ctx)
 	default:
 		return fmt.Errorf("unknown state: %v", operatorConfig.Spec.ManagementState)
 	}
@@ -93,52 +82,12 @@ func (c *ResourceSyncDestinationController) sync() error {
 	return err
 }
 
-func (c *ResourceSyncDestinationController) removeDefaultIngressCertConfigMap() error {
+func (c *ResourceSyncDestinationController) removeDefaultIngressCertConfigMap(ctx context.Context) error {
 	klog.V(2).Info("deleting default-ingress-cert configmap")
 	defer klog.V(2).Info("finished deleting default-ingress-cert configmap")
-	return c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Delete(c.ctx, api.DefaultIngressCertConfigMapName, metav1.DeleteOptions{})
-}
-
-func (c *ResourceSyncDestinationController) Run(workers int, stopCh <-chan struct{}) {
-	defer runtime.HandleCrash()
-	defer c.queue.ShutDown()
-	klog.Infof("starting %v", controllerName)
-	defer klog.Infof("shutting down %v", controllerName)
-	if !cache.WaitForCacheSync(stopCh, c.cachesToSync...) {
-		klog.Infoln("caches did not sync")
-		runtime.HandleError(fmt.Errorf("caches did not sync"))
-		return
+	err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Delete(ctx, api.DefaultIngressCertConfigMapName, metav1.DeleteOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil
 	}
-	// only start one worker
-	go wait.Until(c.runWorker, time.Second, stopCh)
-	<-stopCh
-}
-
-func (c *ResourceSyncDestinationController) runWorker() {
-	for c.processNextWorkItem() {
-	}
-}
-
-func (c *ResourceSyncDestinationController) processNextWorkItem() bool {
-	processKey, quit := c.queue.Get()
-	if quit {
-		return false
-	}
-	defer c.queue.Done(processKey)
-	err := c.sync()
-	if err == nil {
-		c.queue.Forget(processKey)
-		return true
-	}
-	runtime.HandleError(fmt.Errorf("%v failed with : %v", processKey, err))
-	c.queue.AddRateLimited(processKey)
-	return true
-}
-
-func (c *ResourceSyncDestinationController) newEventHandler() cache.ResourceEventHandler {
-	return cache.ResourceEventHandlerFuncs{
-		AddFunc:    func(obj interface{}) { c.queue.Add(controllerWorkQueueKey) },
-		UpdateFunc: func(old, new interface{}) { c.queue.Add(controllerWorkQueueKey) },
-		DeleteFunc: func(obj interface{}) { c.queue.Add(controllerWorkQueueKey) },
-	}
+	return err
 }

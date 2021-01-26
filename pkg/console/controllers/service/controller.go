@@ -43,7 +43,7 @@ type ServiceSyncController struct {
 	// names
 	targetNamespace string
 	serviceName     string
-
+	// events
 	resourceSyncer resourcesynccontroller.ResourceSyncer
 }
 

@@ -204,11 +204,9 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		operatorConfigInformers.Operator().V1().Consoles(),
 		// configmap
 		kubeClient.CoreV1(),
-		kubeInformersNamespaced.Core().V1().ConfigMaps(),
 		// events
 		recorder,
-		// context
-		ctx,
+		resourceSyncer,
 	)
 
 	consoleServiceController := service.NewServiceSyncController(
@@ -244,8 +242,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		api.OpenShiftConsoleRouteName,
 		// events
 		recorder,
-		// context
-		ctx,
+		resourceSyncer,
 	)
 
 	versionRecorder := status.NewVersionGetter()
@@ -316,15 +313,14 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		logLevelController,
 		managementStateController,
 		configUpgradeableController,
+		resourceSyncDestinationController,
 		consoleServiceController,
+		consoleRouteController,
 		consoleOperator,
 	} {
 		go controller.Run(ctx, 1)
 	}
 
-	// go consoleServiceController.Run(1, ctx.Done())
-	go consoleRouteController.Run(1, ctx.Done())
-	go resourceSyncDestinationController.Run(1, ctx.Done())
 	go cliDownloadsController.Run(1, ctx.Done())
 	// go staleConditionsController.Run(1, ctx.Done())
 
