@@ -19,6 +19,7 @@ import (
 	operatorv1 "github.com/openshift/api/operator"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
+	"github.com/openshift/console-operator/pkg/console/controllers/configmap"
 	"github.com/openshift/console-operator/pkg/console/controllers/resourcesyncdestination"
 	"github.com/openshift/console-operator/pkg/console/controllers/route"
 	"github.com/openshift/console-operator/pkg/console/operatorclient"
@@ -176,6 +177,31 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		kubeInformersManagedNamespaced.Core().V1(), // Managed ConfigMaps
 		// event handling
 		versionGetter,
+		recorder,
+		resourceSyncer,
+	)
+
+	configMapSyncController := configmap.NewConfigMapSyncController(
+		// top level config
+		configClient.ConfigV1(),
+		configInformers,
+		// operator
+		operatorClient,
+		operatorConfigClient.OperatorV1(),
+		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
+
+		// core resources
+		kubeClient.CoreV1(),                 // Secrets, ConfigMaps, Service
+		kubeInformersNamespaced.Core().V1(), // Secrets, ConfigMaps, Service
+		// routes
+		routesClient.RouteV1(),
+		routesInformersNamespaced.Route().V1().Routes(), // Route
+		// oauth
+		oauthClient.OauthV1(),
+		oauthInformers.Oauth().V1().OAuthClients(), // OAuth clients
+		// plugins
+		consoleInformers.Console().V1alpha1().ConsolePlugins(),
+		// events
 		recorder,
 		resourceSyncer,
 	)
