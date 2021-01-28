@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/klog/v2"
@@ -25,6 +24,7 @@ const (
 )
 
 type ResourceSyncDestinationController struct {
+	// operatorconfig
 	operatorConfigClient operatorclientv1.ConsoleInterface
 	configMapClient      coreclientv1.ConfigMapsGetter
 	// events
@@ -68,26 +68,56 @@ func (c *ResourceSyncDestinationController) Sync(ctx context.Context, controller
 
 	switch operatorConfig.Spec.ManagementState {
 	case operatorsv1.Managed:
-		klog.V(4).Infoln("console is in a managed state: syncing default-ingress-cert configmap")
+		klog.V(4).Infoln("console is in a managed state: syncing configmaps")
 	case operatorsv1.Unmanaged:
-		klog.V(4).Infoln("console is in an unmanaged state: skipping default-ingress-cert configmap sync")
+		klog.V(4).Infoln("console is in an unmanaged state: skipping configmaps sync")
 		return nil
 	case operatorsv1.Removed:
-		klog.V(4).Infoln("console is in an removed state: removing synced default-ingress-cert configmap")
-		return c.removeDefaultIngressCertConfigMap(ctx)
+		klog.V(4).Infoln("console is in an removed state: removing synced configmaps")
 	default:
 		return fmt.Errorf("unknown state: %v", operatorConfig.Spec.ManagementState)
 	}
 
+	err = c.syncIngressCert(ctx)
+
 	return err
 }
 
-func (c *ResourceSyncDestinationController) removeDefaultIngressCertConfigMap(ctx context.Context) error {
-	klog.V(2).Info("deleting default-ingress-cert configmap")
-	defer klog.V(2).Info("finished deleting default-ingress-cert configmap")
-	err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Delete(ctx, api.DefaultIngressCertConfigMapName, metav1.DeleteOptions{})
-	if apierrors.IsNotFound(err) {
-		return nil
+// func (c *ResourceSyncDestinationController) removeDefaultIngressCertConfigMap(ctx context.Context) error {
+// 	klog.V(2).Info("deleting default-ingress-cert configmap")
+// 	defer klog.V(2).Info("finished deleting default-ingress-cert configmap")
+// 	err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Delete(ctx, api.DefaultIngressCertConfigMapName, metav1.DeleteOptions{})
+// 	if apierrors.IsNotFound(err) {
+// 		return nil
+// 	}
+// 	return err
+// }
+
+func (c *ResourceSyncDestinationController) syncCustomLogo(operatorConfig operatorsv1.Console) error {
+	source := resourcesynccontroller.ResourceLocation{}
+	logoConfigMapName := operatorConfig.Spec.Customization.CustomLogoFile.Name
+
+	if logoConfigMapName != "" {
+		source.Name = logoConfigMapName
+		source.Namespace = api.OpenShiftConfigNamespace
 	}
-	return err
+	// if no custom logo provided, sync an empty source to delete
+	return c.resourceSyncer.SyncConfigMap(
+		resourcesynccontroller.ResourceLocation{Namespace: api.OpenShiftConsoleNamespace, Name: api.OpenShiftCustomLogoConfigMapName},
+		source,
+	)
+}
+
+func (c *ResourceSyncDestinationController) syncIngressCert(ctx context.Context) error {
+	_, err := c.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(ctx, api.DefaultIngressCertConfigMapName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	// sync: 'default-ingress-cert' configmap
+	// from: 'openshift-config-managed' namespace
+	// to:   'openshift-console' namespace
+	return c.resourceSyncer.SyncConfigMap(
+		resourcesynccontroller.ResourceLocation{Name: api.DefaultIngressCertConfigMapName, Namespace: api.OpenShiftConsoleNamespace},
+		resourcesynccontroller.ResourceLocation{Name: api.DefaultIngressCertConfigMapName, Namespace: api.OpenShiftConfigManagedNamespace},
+	)
 }

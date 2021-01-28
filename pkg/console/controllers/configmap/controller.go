@@ -152,7 +152,7 @@ func (c *ConfigMapSyncController) Sync(ctx context.Context, controllerContext fa
 		return statusHandler.FlushAndReturn(routeErr)
 	}
 
-	cm, cmChanged, cmErrReason, cmErr := c.SyncConfigMap(ctx, configSet, route, controllerContext.Recorder())
+	_, _, cmErrReason, cmErr := c.SyncConfigMap(ctx, configSet, route, controllerContext.Recorder())
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
 	if cmErr != nil {
 		return statusHandler.FlushAndReturn(cmErr)
