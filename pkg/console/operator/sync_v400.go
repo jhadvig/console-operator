@@ -27,7 +27,6 @@ import (
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
-	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 
 	// operator
 	customerrors "github.com/openshift/console-operator/pkg/console/errors"
@@ -58,42 +57,29 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	}
 
 	route, routeErr := co.routeClient.Routes(api.TargetNamespace).Get(ctx, routeName, metav1.GetOptions{})
-	// TODO: this controller is no longer responsible for syncing the route.
-	//   however, the route is essential for several of the components below.
-	//   - is it appropraite for SyncLoopRefresh InProgress to be used here?
-	//     the loop should exit early and wait until the RouteSyncController creates the route.
-	//     there is nothing new in this flow, other than 2 controllers now look
-	//     at the same resource.
-	//     - RouteSyncController is responsible for updates
-	//     - ConsoleOperatorController (future ConsoleDeploymentController) is responsible for reads only.
+
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("SyncLoopRefresh", "InProgress", routeErr))
 	if routeErr != nil {
 		return statusHandler.FlushAndReturn(routeErr)
 	}
 
-	cm, cmChanged, cmErrReason, cmErr := co.SyncConfigMap(ctx, set.Operator, set.Console, set.Infrastructure, set.OAuth, route, controllerContext.Recorder())
-	toUpdate = toUpdate || cmChanged
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ConfigMapSync", cmErrReason, cmErr))
+	cm, cmErr := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, api.OpenShiftConsoleConfigMapName, metav1.GetOptions{})
 	if cmErr != nil {
 		return statusHandler.FlushAndReturn(cmErr)
 	}
 
-	serviceCAConfigMap, serviceCAChanged, serviceCAErrReason, serviceCAErr := co.SyncServiceCAConfigMap(ctx, set.Operator)
-	toUpdate = toUpdate || serviceCAChanged
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("ServiceCASync", serviceCAErrReason, serviceCAErr))
+	serviceCAConfigMap, serviceCAErr := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, api.ServiceCAConfigMapName, metav1.GetOptions{})
 	if serviceCAErr != nil {
 		return statusHandler.FlushAndReturn(serviceCAErr)
 	}
 
-	trustedCAConfigMap, trustedCAConfigMapChanged, trustedCAErrReason, trustedCAErr := co.SyncTrustedCAConfigMap(ctx, set.Operator)
-	toUpdate = toUpdate || trustedCAConfigMapChanged
-	statusHandler.AddConditions(status.HandleProgressingOrDegraded("TrustedCASync", trustedCAErrReason, trustedCAErr))
+	trustedCAConfigMap, trustedCAErr := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, api.TrustedCAConfigMapName, metav1.GetOptions{})
 	if trustedCAErr != nil {
 		return statusHandler.FlushAndReturn(trustedCAErr)
 	}
 
-	// TODO: why is this missing a toUpdate change?
-	customLogoCanMount, customLogoErrReason, customLogoError := co.SyncCustomLogoConfigMap(ctx, updatedOperatorConfig)
+	// syncing customLogo is done by resourcesyncdestination controller
+	customLogoCanMount, customLogoErrReason, customLogoError := co.ValidateCustomLogo(ctx, updatedOperatorConfig)
 	// If the custom logo sync fails for any reason, we are degraded, not progressing.
 	// The sync loop may not settle, we are unable to honor it in current state.
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("CustomLogoSync", customLogoErrReason, customLogoError))
@@ -101,6 +87,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 		return statusHandler.FlushAndReturn(customLogoError)
 	}
 
+	// syncing defaultIngressCert is done by resourcesyncdestination controller
 	defaultIngressCertConfigMap, defaultIngressCertErrReason, defaultIngressCertErr := co.ValidateDefaultIngressCertConfigMap(ctx)
 	statusHandler.AddConditions(status.HandleProgressingOrDegraded("DefaultIngressCertValidation", defaultIngressCertErrReason, defaultIngressCertErr))
 	if defaultIngressCertErr != nil {
@@ -180,14 +167,8 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	}
 
 	defer func() {
-		klog.V(4).Infof("sync loop 4.0.0 complete")
+		klog.V(4).Infof("operator sync loop 4.0.0 complete")
 
-		if cmChanged {
-			klog.V(4).Infof("\t configmap changed: %v", cm.GetResourceVersion())
-		}
-		if serviceCAChanged {
-			klog.V(4).Infof("\t service-ca configmap changed: %v", serviceCAConfigMap.GetResourceVersion())
-		}
 		if secChanged {
 			klog.V(4).Infof("\t secret changed: %v", sec.GetResourceVersion())
 		}
@@ -416,18 +397,6 @@ func (co *consoleOperator) SyncTrustedCAConfigMap(ctx context.Context, operatorC
 	return actual, true, "", err
 }
 
-func (co *consoleOperator) SyncCustomLogoConfigMap(ctx context.Context, operatorConfig *operatorv1.Console) (okToMount bool, reason string, err error) {
-	// validate first, to avoid a broken volume mount & a crashlooping console
-	okToMount, reason, err = co.ValidateCustomLogo(ctx, operatorConfig)
-
-	if okToMount || configmapsub.IsRemoved(operatorConfig) {
-		if err := co.UpdateCustomLogoSyncSource(operatorConfig); err != nil {
-			return false, "FailedSyncSource", customerrors.NewCustomLogoError("custom logo sync source update error")
-		}
-	}
-	return okToMount, reason, err
-}
-
 func (co *consoleOperator) ValidateDefaultIngressCertConfigMap(ctx context.Context) (defaultIngressCert *corev1.ConfigMap, reason string, err error) {
 	defaultIngressCertConfigMap, err := co.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Get(ctx, api.DefaultIngressCertConfigMapName, metav1.GetOptions{})
 	if err != nil {
@@ -440,28 +409,6 @@ func (co *consoleOperator) ValidateDefaultIngressCertConfigMap(ctx context.Conte
 		return nil, "MissingDefaultIngressCertBundle", fmt.Errorf("default-ingress-cert configmap is missing ca-bundle.crt data")
 	}
 	return defaultIngressCertConfigMap, "", nil
-}
-
-// on each pass of the operator sync loop, we need to check the
-// operator config for a custom logo.  If this has been set, then
-// we notify the resourceSyncer that it needs to start watching this
-// configmap in its own sync loop.  Note that the resourceSyncer's actual
-// sync loop will run later.  Our operator is waiting to receive
-// the copied configmap into the console namespace for a future
-// sync loop to mount into the console deployment.
-func (c *consoleOperator) UpdateCustomLogoSyncSource(operatorConfig *operatorv1.Console) error {
-	source := resourcesynccontroller.ResourceLocation{}
-	logoConfigMapName := operatorConfig.Spec.Customization.CustomLogoFile.Name
-
-	if logoConfigMapName != "" {
-		source.Name = logoConfigMapName
-		source.Namespace = api.OpenShiftConfigNamespace
-	}
-	// if no custom logo provided, sync an empty source to delete
-	return c.resourceSyncer.SyncConfigMap(
-		resourcesynccontroller.ResourceLocation{Namespace: api.OpenShiftConsoleNamespace, Name: api.OpenShiftCustomLogoConfigMapName},
-		source,
-	)
 }
 
 func (co *consoleOperator) ValidateCustomLogo(ctx context.Context, operatorConfig *operatorv1.Console) (okToMount bool, reason string, err error) {

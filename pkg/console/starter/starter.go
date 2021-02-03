@@ -19,6 +19,7 @@ import (
 	operatorv1 "github.com/openshift/api/operator"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/controllers/clidownloads"
+	"github.com/openshift/console-operator/pkg/console/controllers/configmap"
 	"github.com/openshift/console-operator/pkg/console/controllers/resourcesyncdestination"
 	"github.com/openshift/console-operator/pkg/console/controllers/route"
 	"github.com/openshift/console-operator/pkg/console/operatorclient"
@@ -180,30 +181,32 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		resourceSyncer,
 	)
 
-	// configMapSyncController := configmap.NewConfigMapSyncController(
-	// 	// top level config
-	// 	configClient.ConfigV1(),
-	// 	configInformers,
-	// 	// operator
-	// 	operatorClient,
-	// 	operatorConfigClient.OperatorV1(),
-	// 	operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
+	consoleConfigMapSyncController := configmap.NewConfigMapSyncController(
+		// top level config
+		configClient.ConfigV1(),
+		configInformers,
+		// operator
+		operatorClient,
+		operatorConfigClient.OperatorV1(),
+		operatorConfigInformers.Operator().V1().Consoles(), // OperatorConfig
 
-	// 	// core resources
-	// 	kubeClient.CoreV1(),                 // Secrets, ConfigMaps, Service
-	// 	kubeInformersNamespaced.Core().V1(), // Secrets, ConfigMaps, Service
-	// 	// routes
-	// 	routesClient.RouteV1(),
-	// 	routesInformersNamespaced.Route().V1().Routes(), // Route
-	// 	// oauth
-	// 	oauthClient.OauthV1(),
-	// 	oauthInformers.Oauth().V1().OAuthClients(), // OAuth clients
-	// 	// plugins
-	// 	consoleInformers.Console().V1alpha1().ConsolePlugins(),
-	// 	// events
-	// 	recorder,
-	// 	resourceSyncer,
-	// )
+		// core resources
+		kubeClient.CoreV1(),                 // Secrets, ConfigMaps, Service
+		kubeInformersNamespaced.Core().V1(), // Secrets, ConfigMaps, Service
+		// ConfigMap from openshift-config-managed
+		kubeInformersManagedNamespaced.Core().V1(), // Managed ConfigMaps
+		// routes
+		routesClient.RouteV1(),
+		routesInformersNamespaced.Route().V1().Routes(), // Route
+		// oauth
+		oauthClient.OauthV1(),
+		oauthInformers.Oauth().V1().OAuthClients(), // OAuth clients
+		// plugins
+		consoleInformers.Console().V1alpha1().ConsolePlugins(),
+		// events
+		recorder,
+		resourceSyncer,
+	)
 
 	cliDownloadsController := clidownloads.NewCLIDownloadsSyncController(
 		// clients
@@ -223,11 +226,13 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 	// ResourceSyncDestinationController contains additional logic for all the
 	// secrets and configmaps that we resourceSyncer is taking care of
 	resourceSyncDestinationController := resourcesyncdestination.NewResourceSyncDestinationController(
+		operatorClient,
 		// operatorconfig
 		operatorConfigClient.OperatorV1().Consoles(),
 		operatorConfigInformers.Operator().V1().Consoles(),
 		// configmap
 		kubeClient.CoreV1(),
+		kubeInformersNamespaced.Core().V1(),
 		// events
 		recorder,
 		resourceSyncer,
@@ -338,6 +343,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		managementStateController,
 		configUpgradeableController,
 		resourceSyncDestinationController,
+		consoleConfigMapSyncController,
 		consoleServiceController,
 		consoleRouteController,
 		consoleOperator,

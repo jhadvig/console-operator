@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	coreinformerv1 "k8s.io/client-go/informers/core/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/klog/v2"
 
@@ -13,9 +15,11 @@ import (
 	operatorinformersv1 "github.com/openshift/client-go/operator/informers/externalversions/operator/v1"
 	"github.com/openshift/console-operator/pkg/api"
 	"github.com/openshift/console-operator/pkg/console/controllers/util"
+	"github.com/openshift/console-operator/pkg/console/status"
 	"github.com/openshift/library-go/pkg/controller/factory"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
+	"github.com/openshift/library-go/pkg/operator/v1helpers"
 )
 
 const (
@@ -24,26 +28,32 @@ const (
 )
 
 type ResourceSyncDestinationController struct {
+	operatorClient v1helpers.OperatorClient
 	// operatorconfig
 	operatorConfigClient operatorclientv1.ConsoleInterface
 	configMapClient      coreclientv1.ConfigMapsGetter
+	corev1Informer       coreinformerv1.Interface
 	// events
 	resourceSyncer resourcesynccontroller.ResourceSyncer
 }
 
 func NewResourceSyncDestinationController(
+	operatorClient v1helpers.OperatorClient,
 	// operatorconfig
 	operatorConfigClient operatorclientv1.ConsoleInterface,
 	operatorConfigInformer operatorinformersv1.ConsoleInformer,
 	// configmap
 	corev1Client coreclientv1.CoreV1Interface,
+	corev1Informer coreinformerv1.Interface,
 	// events
 	recorder events.Recorder,
 	resourceSyncer resourcesynccontroller.ResourceSyncer,
 ) factory.Controller {
 	corev1Client.ConfigMaps(api.OpenShiftConsoleNamespace)
+	configMapInformer := corev1Informer.ConfigMaps()
 
 	ctrl := &ResourceSyncDestinationController{
+		operatorClient:       operatorClient,
 		operatorConfigClient: operatorConfigClient,
 		configMapClient:      corev1Client,
 		// events
@@ -56,7 +66,10 @@ func NewResourceSyncDestinationController(
 		WithFilteredEventsInformers( // configs
 			configNameFilter,
 			operatorConfigInformer.Informer(),
-		).WithSync(ctrl.Sync).
+		).WithFilteredEventsInformers(
+		util.NamesFilter(api.OpenShiftConsoleConfigMapName, api.DefaultIngressCertConfigMapName, api.OpenShiftCustomLogoConfigMapName),
+		configMapInformer.Informer(),
+	).WithSync(ctrl.Sync).
 		ToController("ConsoleResourceSyncDestinationController", recorder.WithComponentSuffix("console-resource-sync-destination-controller"))
 }
 
@@ -65,6 +78,8 @@ func (c *ResourceSyncDestinationController) Sync(ctx context.Context, controller
 	if err != nil {
 		return err
 	}
+
+	statusHandler := status.NewStatusHandler(c.operatorClient)
 
 	switch operatorConfig.Spec.ManagementState {
 	case operatorsv1.Managed:
@@ -78,20 +93,17 @@ func (c *ResourceSyncDestinationController) Sync(ctx context.Context, controller
 		return fmt.Errorf("unknown state: %v", operatorConfig.Spec.ManagementState)
 	}
 
-	err = c.syncIngressCert(ctx)
+	syncIngressCertErr := c.syncIngressCert(ctx)
+	if syncIngressCertErr != nil {
+		return statusHandler.FlushAndReturn(syncIngressCertErr)
+	}
+	syncCustomLogoErr := c.syncCustomLogo(*operatorConfig)
+	if syncCustomLogoErr != nil {
+		return statusHandler.FlushAndReturn(syncCustomLogoErr)
+	}
 
-	return err
+	return statusHandler.FlushAndReturn(nil)
 }
-
-// func (c *ResourceSyncDestinationController) removeDefaultIngressCertConfigMap(ctx context.Context) error {
-// 	klog.V(2).Info("deleting default-ingress-cert configmap")
-// 	defer klog.V(2).Info("finished deleting default-ingress-cert configmap")
-// 	err := c.configMapClient.ConfigMaps(api.OpenShiftConsoleNamespace).Delete(ctx, api.DefaultIngressCertConfigMapName, metav1.DeleteOptions{})
-// 	if apierrors.IsNotFound(err) {
-// 		return nil
-// 	}
-// 	return err
-// }
 
 func (c *ResourceSyncDestinationController) syncCustomLogo(operatorConfig operatorsv1.Console) error {
 	source := resourcesynccontroller.ResourceLocation{}
@@ -111,8 +123,15 @@ func (c *ResourceSyncDestinationController) syncCustomLogo(operatorConfig operat
 func (c *ResourceSyncDestinationController) syncIngressCert(ctx context.Context) error {
 	_, err := c.configMapClient.ConfigMaps(api.OpenShiftConfigManagedNamespace).Get(ctx, api.DefaultIngressCertConfigMapName, metav1.GetOptions{})
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return c.resourceSyncer.SyncConfigMap(
+				resourcesynccontroller.ResourceLocation{Name: api.DefaultIngressCertConfigMapName, Namespace: api.OpenShiftConsoleNamespace},
+				resourcesynccontroller.ResourceLocation{},
+			)
+		}
 		return err
 	}
+
 	// sync: 'default-ingress-cert' configmap
 	// from: 'openshift-config-managed' namespace
 	// to:   'openshift-console' namespace
