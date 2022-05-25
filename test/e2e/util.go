@@ -115,3 +115,29 @@ func patchAndCheckConsoleCLIDownloads(t *testing.T, client *framework.ClientSet,
 	})
 	return err
 }
+
+func patchAndCheckPodDisruptionBudget(t *testing.T, client *framework.ClientSet, isOperatorManaged bool) error {
+	t.Logf("patching Selector on the console PodDisruptionBudget")
+	pdb, err := client.PodDisruptionBudget.PodDisruptionBudgets(consoleapi.OpenShiftConsoleNamespace).Patch(context.TODO(), consoleapi.OpenShiftConsoleRouteName, types.MergePatchType, []byte(`{"spec": "selector": {
+		"matchLabels": {
+		  "app": "console"
+		}}`), metav1.PatchOptions{})
+	if err != nil {
+		return err
+	}
+	patchedData := pdb.Spec.Selector.MatchLabels
+
+	t.Logf("polling for patched Selector on the console PodDisruptionBudget")
+	err = wait.Poll(1*time.Second, pollTimeout, func() (stop bool, err error) {
+		pdb, err = framework.GetConsolePodDisruptionBudget(client)
+		if err != nil {
+			return true, err
+		}
+		newData := pdb.Spec.Selector.MatchLabels
+		if isOperatorManaged {
+			return !reflect.DeepEqual(patchedData, newData), nil
+		}
+		return reflect.DeepEqual(patchedData, newData), nil
+	})
+	return err
+}

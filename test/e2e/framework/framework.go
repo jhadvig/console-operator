@@ -10,6 +10,7 @@ import (
 
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,6 +52,8 @@ func getTestingResources() []TestingResource {
 		{"Deployment", consoleapi.OpenShiftConsoleDownloadsDeploymentName, consoleapi.OpenShiftConsoleNamespace},
 		{"Route", consoleapi.OpenShiftConsoleRouteName, consoleapi.OpenShiftConsoleNamespace},
 		{"Service", consoleapi.OpenShiftConsoleServiceName, consoleapi.OpenShiftConsoleNamespace},
+		{"PodDisruptionBudget", consoleapi.OpenShiftConsoleName, consoleapi.OpenShiftConsoleNamespace},
+		{"PodDisruptionBudget", consoleapi.DownloadsResourceName, consoleapi.OpenShiftConsoleNamespace},
 	}
 }
 
@@ -97,6 +100,8 @@ func GetResource(client *ClientSet, resource TestingResource) (runtime.Object, e
 		res, err = client.ConsoleCliDownloads.Get(context.TODO(), resource.name, metav1.GetOptions{})
 	case "Deployment":
 		res, err = client.Apps.Deployments(resource.namespace).Get(context.TODO(), resource.name, metav1.GetOptions{})
+	case "PodDisruptionBudget":
+		res, err = client.PodDisruptionBudget.PodDisruptionBudgets(resource.namespace).Get(context.TODO(), resource.name, metav1.GetOptions{})
 	default:
 		err = fmt.Errorf("error getting resource: resource %s not identified", resource.kind)
 	}
@@ -130,6 +135,10 @@ func GetDownloadsDeployment(client *ClientSet) (*appv1.Deployment, error) {
 
 func GetConsoleCLIDownloads(client *ClientSet, consoleCLIDownloadName string) (*consolev1.ConsoleCLIDownload, error) {
 	return client.ConsoleCliDownloads.Get(context.TODO(), consoleCLIDownloadName, metav1.GetOptions{})
+}
+
+func GetConsolePodDisruptionBudget(client *ClientSet) (*policyv1.PodDisruptionBudget, error) {
+	return client.PodDisruptionBudget.PodDisruptionBudgets(consoleapi.OpenShiftConsoleNamespace).Get(context.TODO(), consoleapi.OpenShiftConsoleRouteName, metav1.GetOptions{})
 }
 
 func deleteResource(client *ClientSet, resource TestingResource) error {
