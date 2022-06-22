@@ -117,23 +117,20 @@ func patchAndCheckConsoleCLIDownloads(t *testing.T, client *framework.ClientSet,
 }
 
 func patchAndCheckPodDisruptionBudget(t *testing.T, client *framework.ClientSet, isOperatorManaged bool) error {
-	t.Logf("patching Selector on the console PodDisruptionBudget")
-	pdb, err := client.PodDisruptionBudget.PodDisruptionBudgets(consoleapi.OpenShiftConsoleNamespace).Patch(context.TODO(), consoleapi.OpenShiftConsoleRouteName, types.MergePatchType, []byte(`{"spec": "selector": {
-		"matchLabels": {
-		  "app": "console"
-		}}`), metav1.PatchOptions{})
+	t.Logf("patching MaxUnavailable on the console PodDisruptionBudget")
+	pdb, err := client.PodDisruptionBudget.PodDisruptionBudgets(consoleapi.OpenShiftConsoleNamespace).Patch(context.TODO(), consoleapi.OpenShiftConsoleRouteName, types.MergePatchType, []byte(`{"spec": { "maxUnavailable": 1}}`), metav1.PatchOptions{})
 	if err != nil {
 		return err
 	}
-	patchedData := pdb.Spec.Selector.MatchLabels
+	patchedData := pdb.Spec.MaxUnavailable
 
-	t.Logf("polling for patched Selector on the console PodDisruptionBudget")
+	t.Logf("polling for patched MaxUnavailable on the console PodDisruptionBudget")
 	err = wait.Poll(1*time.Second, pollTimeout, func() (stop bool, err error) {
 		pdb, err = framework.GetConsolePodDisruptionBudget(client)
 		if err != nil {
 			return true, err
 		}
-		newData := pdb.Spec.Selector.MatchLabels
+		newData := pdb.Spec.MaxUnavailable
 		if isOperatorManaged {
 			return !reflect.DeepEqual(patchedData, newData), nil
 		}
