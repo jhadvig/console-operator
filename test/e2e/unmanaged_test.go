@@ -81,7 +81,12 @@ func TestEditUnmanagedPodDisruptionBudget(t *testing.T) {
 	client, _ := setupUnmanagedTestCase(t)
 	defer cleanUpUnmanagedTestCase(t, client)
 
-	err := patchAndCheckPodDisruptionBudget(t, client, false)
+	err := patchAndCheckPodDisruptionBudget(t, client, false, api.OpenShiftConsolePDBName)
+	if err != nil {
+		t.Fatalf("error: %s", err)
+	}
+
+	err = patchAndCheckPodDisruptionBudget(t, client, false, api.OpenShiftConsoleDownloadsPDBName)
 	if err != nil {
 		t.Fatalf("error: %s", err)
 	}

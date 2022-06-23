@@ -80,7 +80,12 @@ func TestEditManagedPodDisruptionBudget(t *testing.T) {
 	client, _ := setupManagedTestCase(t)
 	defer cleanupManagedTestCase(t, client)
 
-	err := patchAndCheckPodDisruptionBudget(t, client, true)
+	err := patchAndCheckPodDisruptionBudget(t, client, true, api.OpenShiftConsolePDBName)
+	if err != nil {
+		t.Fatalf("error: %s", err)
+	}
+
+	err = patchAndCheckPodDisruptionBudget(t, client, true, api.OpenShiftConsoleDownloadsPDBName)
 	if err != nil {
 		t.Fatalf("error: %s", err)
 	}

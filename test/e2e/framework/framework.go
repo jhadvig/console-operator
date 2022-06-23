@@ -137,7 +137,7 @@ func GetConsoleCLIDownloads(client *ClientSet, consoleCLIDownloadName string) (*
 	return client.ConsoleCliDownloads.Get(context.TODO(), consoleCLIDownloadName, metav1.GetOptions{})
 }
 
-func GetConsolePodDisruptionBudget(client *ClientSet) (*policyv1.PodDisruptionBudget, error) {
+func GetConsolePodDisruptionBudget(client *ClientSet, pdbName string) (*policyv1.PodDisruptionBudget, error) {
 	return client.PodDisruptionBudget.PodDisruptionBudgets(consoleapi.OpenShiftConsoleNamespace).Get(context.TODO(), consoleapi.OpenShiftConsoleRouteName, metav1.GetOptions{})
 }
 
