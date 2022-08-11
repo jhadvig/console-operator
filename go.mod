@@ -9,18 +9,25 @@ require (
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-test/deep v1.0.5
 	github.com/google/gofuzz v1.2.0 // indirect
+	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 	github.com/open-cluster-management/api v0.0.0-20210527013639-a6845f2ebcb1
-	github.com/openshift/api v0.0.0-20220404140913-04e1813ebb11
+	github.com/openshift/api v0.0.0-20220525145417-ee5b62754c68
 	github.com/openshift/build-machinery-go v0.0.0-20211213093930-7e33a7eb4ce3
-	github.com/openshift/client-go v0.0.0-20211209144617-7385dd6338e3
-	github.com/openshift/library-go v0.0.0-20211220195323-eca2c467c492
+	github.com/openshift/client-go v0.0.0-20220525160904-9e1acff93e4a
+	github.com/openshift/library-go v0.0.0-20220704153411-3ea4b775d418
 	github.com/pkg/profile v1.4.0 // indirect
-	github.com/spf13/cobra v1.2.1
+	github.com/spf13/cobra v1.4.0
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.23.0
-	k8s.io/apimachinery v0.23.0
-	k8s.io/client-go v0.23.0
-	k8s.io/component-base v0.23.0
-	k8s.io/klog/v2 v2.30.0
-	k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b
+	k8s.io/api v0.24.0
+	k8s.io/apiextensions-apiserver v0.24.0
+	k8s.io/apimachinery v0.24.0
+	k8s.io/client-go v0.24.0
+	k8s.io/component-base v0.24.0
+	k8s.io/klog/v2 v2.60.1
+	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
+)
+
+replace (
+	github.com/openshift/api => github.com/jhadvig/api v0.0.0-20220818101750-1b7438fb9512
+	github.com/openshift/client-go => github.com/jhadvig/client-go v0.0.0-20220818123851-a993fd10e1f8
 )
