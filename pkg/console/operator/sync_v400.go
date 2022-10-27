@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 
 	// kube
 	appsv1 "k8s.io/api/apps/v1"
@@ -410,7 +411,10 @@ func (co *consoleOperator) SyncConfigMap(
 		return nil, false, "FailedGetMonitoringSharedConfig", mscErr
 	}
 
-	copiedCSVsDisabled := co.getCopiedCSVsDisabled(ctx)
+	copiedCSVsDisabled, ccdErr := co.isCopiedCSVsDisabled(ctx)
+	if ccdErr != nil {
+		return nil, false, "FailedGetOLMConfig", ccdErr
+	}
 
 	defaultConfigmap, _, err := configmapsub.DefaultConfigMap(
 		operatorConfig,
@@ -623,19 +627,14 @@ func getNodeArchitectures(nodes *corev1.NodeList) []string {
 	return nodeArchitecturesSet.List()
 }
 
-func (co *consoleOperator) getCopiedCSVsDisabled(ctx context.Context) bool {
-	olmConfig, err := co.dynamicClient.Resource(schema.GroupVersionResource{Group: "operators.coreos.com", Version: "v1", Resource: "olmconfigs"}).Get(ctx, "cluster", metav1.GetOptions{})
+func (co *consoleOperator) isCopiedCSVsDisabled(ctx context.Context) (bool, error) {
+	olmConfig, err := co.dynamicClient.Resource(schema.GroupVersionResource{Group: api.OLMConfigGroup, Version: api.OLMConfigVersion, Resource: api.OLMConfigResource}).Get(ctx, api.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
-		return false
+		return false, err
 	}
-
-	copiedCSVsDisabledFlag, _, err := unstructured.NestedString(olmConfig.Object, "spec", "features", "disableCopiedCSVs")
-	if err != nil {
-		return false
+	copiedCSVsDisabled, found, err := unstructured.NestedString(olmConfig.Object, "spec", "features", "disableCopiedCSVs")
+	if err != nil || !found {
+		return false, err
 	}
-	if copiedCSVsDisabledFlag == "true" {
-		return true
-	}
-
-	return false
+	return strconv.ParseBool(copiedCSVsDisabled)
 }

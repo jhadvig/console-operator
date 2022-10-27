@@ -258,9 +258,7 @@ func (b *ConsoleServerCLIConfigBuilder) clusterInfo() ClusterInfo {
 	if len(b.nodeArchitectures) > 0 {
 		conf.NodeArchitectures = b.nodeArchitectures
 	}
-	if b.copiedCSVsDisabled {
-		conf.CopiedCSVsDisabled = b.copiedCSVsDisabled
-	}
+	conf.CopiedCSVsDisabled = b.copiedCSVsDisabled
 	return conf
 }
 

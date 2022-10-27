@@ -189,6 +189,7 @@ func RunOperator(ctx context.Context, controllerContext *controllercmd.Controlle
 		configClient.ConfigV1(),
 		configInformers,
 		dynamicClient,
+		dynamicInformers,
 		// operator
 		operatorClient,
 		operatorConfigClient.OperatorV1(),

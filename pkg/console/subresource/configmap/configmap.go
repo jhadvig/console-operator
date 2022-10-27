@@ -100,7 +100,6 @@ func DefaultConfigMap(
 		TelemetryConfiguration(GetTelemetryConfiguration(operatorConfig)).
 		ReleaseVersion().
 		NodesArchitecture(nodeArchitectures).
-		CopiedCSVsDisabled(copiedCSVsDisabled).
 		ConfigYAML()
 	if err != nil {
 		klog.Errorf("failed to generate user defined console-config config: %v", err)

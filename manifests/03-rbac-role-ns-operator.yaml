@@ -54,4 +54,12 @@ rules:
   verbs:
   - get
   - create
-  - update 
+  - update
+- apiGroups:
+    - operators.coreos.com
+  resources:
+    - olmconfigs
+  verbs:
+    - get
+    - list
+    - watch
