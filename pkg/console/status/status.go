@@ -135,6 +135,11 @@ func (c *StatusHandler) FlushAndReturn(returnErr error) error {
 	return returnErr
 }
 
+func (c *StatusHandler) ResetConditions() error {
+	resetErr := v1helpers.ResetStatusConditions(context.TODO(), c.client, c.statusFuncs...)
+	return resetErr
+}
+
 func (c *StatusHandler) UpdateObservedGeneration(newObservedGeneration int64) {
 	generationFunc := func(oldStatus *operatorsv1.OperatorStatus) error {
 		oldStatus.ObservedGeneration = newObservedGeneration

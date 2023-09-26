@@ -290,12 +290,11 @@ func (c *consoleOperator) removeConsole(ctx context.Context, recorder events.Rec
 	_, _, updateConfigErr := resourceapply.ApplyConfigMap(ctx, c.configMapClient, recorder, configmap.EmptyPublicConfig())
 	errs = append(errs, updateConfigErr)
 
+	resetErr := statusHandler.ResetConditions()
+	errs = append(errs, resetErr)
+
 	// filter out 404 errors, which indicate that resource is already deleted
 	err := utilerrors.FilterOut(utilerrors.NewAggregate(errs), apierrors.IsNotFound)
-
-	statusHandler.AddCondition(consolestatus.HandleAvailable("", "ConsoleRemoved", err))
-	statusHandler.AddCondition(consolestatus.HandleDegraded("", "ConsoleRemoved", err))
-	statusHandler.AddCondition(consolestatus.HandleUpgradable("", "ConsoleRemoved", err))
 
 	return err
 }

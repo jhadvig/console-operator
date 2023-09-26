@@ -152,6 +152,35 @@ func UpdateObservedConfigFn(config map[string]interface{}) UpdateOperatorSpecFun
 	}
 }
 
+func ResetStatusConditions(ctx context.Context, client OperatorClient, updateFuncs ...UpdateStatusFunc) error {
+	resetedOperatorStatusConditions := &operatorv1.OperatorStatus{
+		Conditions: []operatorv1.OperatorCondition{
+			{
+				Type:   operatorv1.OperatorStatusTypeAvailable,
+				Status: operatorv1.ConditionTrue,
+			},
+			{
+				Type:   operatorv1.OperatorStatusTypeDegraded,
+				Status: operatorv1.ConditionFalse,
+			},
+			{
+				Type:   operatorv1.OperatorStatusTypeProgressing,
+				Status: operatorv1.ConditionFalse,
+			},
+			{
+				Type:   operatorv1.OperatorStatusTypeUpgradeable,
+				Status: operatorv1.ConditionTrue,
+			},
+		},
+	}
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		_, _, resourceVersion, err := client.GetOperatorState()
+		_, err = client.UpdateOperatorStatus(ctx, resourceVersion, resetedOperatorStatusConditions)
+		return err
+	})
+	return err
+}
+
 // UpdateStatusFunc is a func that mutates an operator status.
 type UpdateStatusFunc func(status *operatorv1.OperatorStatus) error
 
