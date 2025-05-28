@@ -176,7 +176,7 @@ github.com/modern-go/reflect2
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 ## explicit
 github.com/munnerz/goautoneg
-# github.com/openshift/api v0.0.0-20241108125904-424692fe047e
+# github.com/openshift/api v0.0.0-20241108125904-424692fe047e => github.com/jhadvig/api v0.0.0-20250528065645-8d8bf5f0ed01
 ## explicit; go 1.22.0
 github.com/openshift/api
 github.com/openshift/api/annotations
@@ -519,7 +519,6 @@ golang.org/x/crypto/salsa20/salsa
 # golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1
 ## explicit; go 1.20
 golang.org/x/exp/constraints
-golang.org/x/exp/maps
 golang.org/x/exp/slices
 # golang.org/x/net v0.29.0
 ## explicit; go 1.18
@@ -1427,3 +1426,4 @@ sigs.k8s.io/structured-merge-diff/v4/value
 ## explicit; go 1.12
 sigs.k8s.io/yaml
 sigs.k8s.io/yaml/goyaml.v2
+# github.com/openshift/api => github.com/jhadvig/api v0.0.0-20250528065645-8d8bf5f0ed01
