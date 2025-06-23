@@ -26,7 +26,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      terminationGracePeriodSeconds: 0
+      terminationGracePeriodSeconds: 30
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -45,7 +45,7 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             failureThreshold: 3
-            initialDelaySeconds: 5
+            initialDelaySeconds: 10
           name: download-server
           securityContext:
             readOnlyRootFilesystem: false
@@ -64,7 +64,7 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             failureThreshold: 3
-            initialDelaySeconds: 5
+            initialDelaySeconds: 10
           ports:
             - name: http
               containerPort: 8080
