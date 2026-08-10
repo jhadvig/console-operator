@@ -21,10 +21,10 @@ const (
 	clientSecretFilePath     = "/var/oauth-config/clientSecret"
 	oauthServingCertFilePath = "/var/oauth-serving-cert/ca-bundle.crt"
 	// serving info
-	certFilePath             = "/var/serving-cert/tls.crt"
-	keyFilePath              = "/var/serving-cert/tls.key"
-	sessionAuthKeyFilePath   = "/var/session-secret/sessionAuthenticationKey"
-	sessionEncKeyFilePath    = "/var/session-secret/sessionEncryptionKey"
+	certFilePath           = "/var/serving-cert/tls.crt"
+	keyFilePath            = "/var/serving-cert/tls.key"
+	sessionAuthKeyFilePath = "/var/session-secret/sessionAuthenticationKey"
+	sessionEncKeyFilePath  = "/var/session-secret/sessionEncryptionKey"
 )
 
 // SupportedLightspeedArchitectures defines the list of architectures that support Lightspeed.
