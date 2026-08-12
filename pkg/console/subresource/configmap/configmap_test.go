@@ -126,6 +126,8 @@ clusterInfo:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -194,6 +196,8 @@ clusterInfo:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -222,6 +226,8 @@ apiVersion: console.openshift.io/v1
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -280,6 +286,8 @@ clusterInfo:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -310,6 +318,8 @@ apiVersion: console.openshift.io/v1
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -365,6 +375,8 @@ clusterInfo:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -402,6 +414,8 @@ apiVersion: console.openshift.io/v1
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -453,6 +467,8 @@ clusterInfo:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: ` + string(operatorv1.BrandDedicatedLegacy) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -496,6 +512,8 @@ apiVersion: console.openshift.io/v1
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -547,6 +565,8 @@ clusterInfo:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: ` + string(operatorv1.BrandDedicatedLegacy) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -653,6 +673,8 @@ apiVersion: console.openshift.io/v1
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -704,6 +726,8 @@ clusterInfo:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: ` + string(operatorv1.BrandDedicatedLegacy) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -776,6 +800,8 @@ apiVersion: console.openshift.io/v1
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -827,6 +853,8 @@ clusterInfo:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: ` + string(operatorv1.BrandDedicatedLegacy) + `
   documentationBaseURL: ` + mockOperatorDocURL + `
@@ -902,6 +930,8 @@ clusterInfo:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -972,6 +1002,8 @@ clusterInfo:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -1045,6 +1077,8 @@ clusterInfo:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -1159,6 +1193,8 @@ clusterInfo:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -1231,6 +1267,8 @@ clusterInfo:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -1307,6 +1345,8 @@ clusterInfo:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: ` + DEFAULT_BRAND + `
   documentationBaseURL: ` + DEFAULT_DOC_URL + `
@@ -1548,6 +1588,8 @@ apiVersion: console.openshift.io/v1
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/
@@ -1561,6 +1603,8 @@ apiVersion: console.openshift.io/v1
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   branding: online
   documentationBaseURL: https://docs.okd.io/4.4/

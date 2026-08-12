@@ -72,8 +72,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile: clientSecretFilePath,
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -108,8 +110,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile: clientSecretFilePath,
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -155,8 +159,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile: clientSecretFilePath,
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Capabilities: []v1.Capability{
@@ -209,8 +215,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					LogoutRedirect:      "https://foobar.com/logout",
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 
@@ -273,8 +281,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					LogoutRedirect:      "https://foobar.com/logout",
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -363,8 +373,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile: clientSecretFilePath,
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -402,8 +414,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile: clientSecretFilePath,
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -441,8 +455,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile: clientSecretFilePath,
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
@@ -504,8 +520,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile: clientSecretFilePath,
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -567,8 +585,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile: clientSecretFilePath,
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
@@ -610,8 +630,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile: clientSecretFilePath,
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					DeveloperCatalog: &DeveloperConsoleCatalogCustomization{
@@ -653,8 +675,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile: clientSecretFilePath,
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					ProjectAccess: ProjectAccess{
@@ -695,8 +719,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile: clientSecretFilePath,
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					QuickStarts: QuickStarts{
@@ -751,8 +777,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile: clientSecretFilePath,
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -819,8 +847,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile: clientSecretFilePath,
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -886,8 +916,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile: clientSecretFilePath,
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -946,8 +978,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					LogoutRedirect:   "https://foobar.com/logout",
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Branding:             "okd",
@@ -1003,8 +1037,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile: clientSecretFilePath,
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -1047,8 +1083,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile: clientSecretFilePath,
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -1092,8 +1130,10 @@ func TestConsoleServerCLIConfigBuilder(t *testing.T) {
 					ClientSecretFile: clientSecretFilePath,
 				},
 				Session: Session{
-					CookieEncryptionKeyFile:     "/var/session-secret/sessionEncryptionKey",
-					CookieAuthenticationKeyFile: "/var/session-secret/sessionAuthenticationKey",
+					CookieEncryptionKeyFile:             "/var/session-secret/sessionEncryptionKey",
+					CookieAuthenticationKeyFile:         "/var/session-secret/sessionAuthenticationKey",
+					PreviousCookieEncryptionKeyFile:     "/var/session-secret/previousSessionEncryptionKey",
+					PreviousCookieAuthenticationKeyFile: "/var/session-secret/previousSessionAuthenticationKey",
 				},
 				Customization: Customization{
 					Perspectives: []Perspective{
@@ -1151,6 +1191,8 @@ auth:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: dev
@@ -1199,6 +1241,8 @@ auth:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: dev
@@ -1236,6 +1280,8 @@ auth:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: dev
@@ -1263,6 +1309,8 @@ auth:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: dev
@@ -1292,6 +1340,8 @@ auth:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: dev
@@ -1322,6 +1372,8 @@ auth:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   developerCatalog:
     categories: []
@@ -1376,6 +1428,8 @@ auth:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   developerCatalog:
     categories:
@@ -1422,6 +1476,8 @@ auth:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   developerCatalog:
     categories: null
@@ -1459,6 +1515,8 @@ auth:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   developerCatalog:
     categories: null
@@ -1497,6 +1555,8 @@ auth:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   addPage:
     disabledActions:
@@ -1584,6 +1644,8 @@ auth:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   quickStarts:
     disabled:
@@ -1632,6 +1694,8 @@ auth:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: perspective1
@@ -1704,6 +1768,8 @@ auth:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: perspective1
@@ -1780,6 +1846,8 @@ auth:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: perspective1
@@ -1836,6 +1904,8 @@ auth:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: dev
@@ -1874,6 +1944,8 @@ auth:
 session:
   cookieEncryptionKeyFile: /var/session-secret/sessionEncryptionKey
   cookieAuthenticationKeyFile: /var/session-secret/sessionAuthenticationKey
+  previousCookieEncryptionKeyFile: /var/session-secret/previousSessionEncryptionKey
+  previousCookieAuthenticationKeyFile: /var/session-secret/previousSessionAuthenticationKey
 customization:
   perspectives:
   - id: dev
