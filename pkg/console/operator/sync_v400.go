@@ -143,7 +143,7 @@ func (co *consoleOperator) sync_v400(ctx context.Context, controllerContext fact
 	// Generate session secret for all auth types
 	sessionSecret, err = co.syncSessionSecret(ctx, updatedOperatorConfig, controllerContext.Recorder())
 	if err != nil {
-		return statusHandler.FlushAndReturn(err)
+		return statusHandler.FlushAndReturn(fmt.Errorf("sync session Secret: %w", err))
 	}
 
 	customLogosErr, customLogosErrReason := co.SyncCustomLogos(updatedOperatorConfig)
