@@ -49,6 +49,16 @@ func (c *AuthStatusHandler) Degraded(reason, message string) {
 	c.setCondition(conditionTypeDegraded, metav1.ConditionTrue, reason, message, now)
 }
 
+// DegradedNotAvailable sets Degraded to True, and both Available and
+// Progressing to False. Use when the configuration is fundamentally
+// broken and the component cannot function.
+func (c *AuthStatusHandler) DegradedNotAvailable(reason, message string) {
+	now := metav1.Now()
+	c.setCondition(conditionTypeAvailable, metav1.ConditionFalse, reason, message, now)
+	c.setCondition(conditionTypeProgressing, metav1.ConditionFalse, reason, message, now)
+	c.setCondition(conditionTypeDegraded, metav1.ConditionTrue, reason, message, now)
+}
+
 // Progressing sets the Progressing condition to True and Degraded to False
 func (c *AuthStatusHandler) Progressing(reason, message string) {
 	now := metav1.Now()

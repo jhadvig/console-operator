@@ -2,7 +2,12 @@ package oidcsetup
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	configv1client "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
@@ -206,10 +211,15 @@ func (c *oidcSetupController) syncAuthTypeOIDC(ctx context.Context, authnConfig 
 		return err
 	}
 
+	var caBundle []byte
 	if caCMName := oidcProvider.Issuer.CertificateAuthority.Name; len(caCMName) > 0 {
 		caCM, err := c.configConfigMapLister.ConfigMaps(api.OpenShiftConfigNamespace).Get(caCMName)
 		if err != nil {
 			return fmt.Errorf("failed to get the CA configMap %q configured for the OIDC provider %q: %w", caCMName, oidcProvider.Name, err)
+		}
+
+		if data, ok := caCM.Data["ca-bundle.crt"]; ok {
+			caBundle = []byte(data)
 		}
 
 		_, _, err = resourceapply.SyncPartialConfigMap(ctx,
@@ -222,6 +232,12 @@ func (c *oidcSetupController) syncAuthTypeOIDC(ctx context.Context, authnConfig 
 		if err != nil {
 			return fmt.Errorf("failed to sync the provider's CA configMap: %w", err)
 		}
+	}
+
+	if err := validateOIDCIssuer(ctx, oidcProvider.Issuer.URL, caBundle); err != nil {
+		klog.V(2).Infof("OIDC issuer validation failed for %q: %v", oidcProvider.Issuer.URL, err)
+		c.authStatusHandler.DegradedNotAvailable("OIDCIssuerURLInvalid", err.Error())
+		return nil
 	}
 
 	if valid, msg, err := c.checkClientConfigStatus(authnConfig, clientSecret); err != nil {
@@ -273,6 +289,65 @@ func (c *oidcSetupController) checkClientConfigStatus(authnConfig *configv1.Auth
 	}
 
 	return deplAvailableUpdated, "", nil
+}
+
+const oidcIssuerValidationTimeout = 10 * time.Second
+
+// validateOIDCIssuer checks that the OIDC issuer URL is well-formed and that
+// the provider's discovery endpoint is reachable. caBundle, when non-nil, is
+// used as the TLS root CA pool for the probe request.
+func validateOIDCIssuer(ctx context.Context, issuerURL string, caBundle []byte) error {
+	if len(issuerURL) == 0 {
+		return fmt.Errorf("issuer URL is empty")
+	}
+
+	parsed, err := url.Parse(issuerURL)
+	if err != nil {
+		return fmt.Errorf("invalid issuer URL %q: %v", issuerURL, err)
+	}
+	if !strings.EqualFold(parsed.Scheme, "https") {
+		return fmt.Errorf("issuer URL %q must use the HTTPS scheme", issuerURL)
+	}
+	if parsed.Host == "" {
+		return fmt.Errorf("issuer URL %q must include a host", issuerURL)
+	}
+
+	tlsCfg := &tls.Config{MinVersion: tls.VersionTLS12}
+	if len(caBundle) > 0 {
+		pool := x509.NewCertPool()
+		if pool.AppendCertsFromPEM(caBundle) {
+			tlsCfg.RootCAs = pool
+		}
+	}
+
+	discoveryURL := strings.TrimSuffix(issuerURL, "/") + "/.well-known/openid-configuration"
+
+	probeCtx, cancel := context.WithTimeout(ctx, oidcIssuerValidationTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(probeCtx, http.MethodGet, discoveryURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request for OIDC discovery endpoint %q: %v", discoveryURL, err)
+	}
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: tlsCfg,
+			Proxy:           http.ProxyFromEnvironment,
+		},
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("OIDC discovery request to %q failed: %v", discoveryURL, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("OIDC discovery endpoint %q returned HTTP %d", discoveryURL, resp.StatusCode)
+	}
+
+	return nil
 }
 
 // handleStatus returns whether sync should happen and any error encountering
